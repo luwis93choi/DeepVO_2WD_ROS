@@ -28,7 +28,7 @@ class voDataLoader(torch.utils.data.Dataset):
 
         if self.test is False:
             self.sequence_in_use_idx = 0
-            self.idx_in_sequence = 0
+            self.idx_in_sequence = 1        # Since DeepVO requires 2 consecutive images, Data Index starts from 1
             self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_in_use_idx] + '/image_2')))
             self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_in_use_idx] + '/image_2'))
 
@@ -69,45 +69,90 @@ class voDataLoader(torch.utils.data.Dataset):
             print('Size of test dataset : {}'.format(self.len))
 
     def __getitem__(self, index):
-
+        
+        # index is dummy value for pytorch
+        
+        # 'sequence_in_use_idx' and 'idx_in_sequence' are actual indices of dataset for training and testing.
+        # Since the dataset is composed of multiple separate dataset sequences, sequence and data need their own indexing.
+        
+        # 'sequence_in_use_idx' is the index of KITTI dataset sequence in training or testing -> Dataset in Use
+        # 'idx_in_sequence' is the index of data in the KITTI dataset sequence in training or testing -> Actual Data
+        
+        # In training mode
         if self.test is False:
 
+            # Index reset if the index of data goes over the range of current dataset sequence
             if self.idx_in_sequence >= self.current_sequence_data_num:
                 
                 self.sequence_in_use_idx += 1
                 
                 self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_in_use_idx] + '/image_2')))
-                self.idx_in_sequence = 0
+                self.idx_in_sequence = 1
 
                 self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_in_use_idx] + '/image_2'))
 
+            ### Dataset Image Preparation ###
             base_path = self.img_dataset_path + '/' + self.train_sequence[self.sequence_in_use_idx] + '/image_2'
 
-            Image.open(base_path + '/' + self.img_path[self.idx_in_sequence]).convert('RGB')
+            prev_img = Image.open(base_path + '/' + self.img_path[self.idx_in_sequence-1]).convert('RGB')
+            current_img = Image.open(base_path + '/' + self.img_path[self.idx_in_sequence]).convert('RGB')
 
-            print(self.current_sequence_data_num)
-            print(base_path + '/' + self.img_path[self.idx_in_sequence])
+            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
 
-            self.idx_in_sequence += 1
+            # Load groundtruth at t-1 and t
 
+            # Convert rotation matrix of groundtruth into euler angle
+
+            # Compute the difference between groundtruth at t-1 and t
+
+            # Compute translation difference between groundtruth at t-1 and t
+            
+            # Prepare 6 DOF pose vector (Roll Pitch Yaw X Y Z)
+
+            #########################################################################
+
+        # In test mode
         else:
-
+            
+            # Index reset if the index of data goes over the range of current dataset sequence
             if self.idx_in_sequence >= self.current_sequence_data_num:
                 
                 self.sequence_in_use_idx += 1
                 
                 self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_in_use_idx] + '/image_2')))
-                self.idx_in_sequence = 0
+                self.idx_in_sequence = 1
 
                 self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_in_use_idx] + '/image_2'))
 
+            ### Dataset Image Preparation ###
             base_path = self.img_dataset_path + '/' + self.test_sequence[self.sequence_in_use_idx] + '/image_2'
 
-            Image.open(base_path + '/' + self.img_path[self.idx_in_sequence]).convert('RGB')
+            prev_img = Image.open(base_path + '/' + self.img_path[self.idx_in_sequence-1]).convert('RGB')
+            current_img = Image.open(base_path + '/' + self.img_path[self.idx_in_sequence]).convert('RGB')
 
-            self.idx_in_sequence += 1
+            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
 
-        return 0
+            # Load groundtruth at t-1 and t
+
+            # Convert rotation matrix of groundtruth into euler angle
+
+            # Compute the euler angle difference between groundtruth at t-1 and t
+
+            # Compute translation difference between groundtruth at t-1 and t
+
+            # Prepare 6 DOF pose vector (Roll Pitch Yaw X Y Z)
+            
+            #########################################################################
+
+        print(self.current_sequence_data_num)
+        print(base_path + '/' + self.img_path[self.idx_in_sequence])
+
+        self.idx_in_sequence += 1   # Increase data index everytime data is consumed by DeepVO network
+
+        # Stack the image as indicated in DeepVO paper
+        prev_current_stacked_img = np.asarray(np.concatenate([prev_img, current_img], axis=0))
+
+        return prev_current_stacked_img
 
     def __len__(self):
 
