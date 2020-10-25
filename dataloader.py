@@ -119,8 +119,19 @@ class voDataLoader(torch.utils.data.Dataset):
 
                 self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'))
 
+                # current pose data reset for new sequence
                 self.pose_file.close()
                 self.pose_file = open(self.pose_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '.txt', 'r')
+                line = self.pose_file.readline()
+                pose = line.strip().split()
+                self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+                self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
+                                                [float(pose[4]), float(pose[5]), float(pose[6])], 
+                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
+                self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+                self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                                0.0, 0.0, 0.0,
+                                                0.0, 0.0, 0.0])
 
             ### Dataset Image Preparation ###
             # Load Image at t-1 and t
@@ -181,8 +192,19 @@ class voDataLoader(torch.utils.data.Dataset):
 
                 self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'))
 
+                # current pose data reset for new sequence
                 self.pose_file.close()
                 self.pose_file = open(self.pose_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '.txt', 'r')
+                line = self.pose_file.readline()
+                pose = line.strip().split()
+                self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+                self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
+                                                [float(pose[4]), float(pose[5]), float(pose[6])], 
+                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
+                self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+                self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                                0.0, 0.0, 0.0,
+                                                0.0, 0.0, 0.0])
 
             ### Dataset Image Preparation ###
             # Load Image at t-1 and t

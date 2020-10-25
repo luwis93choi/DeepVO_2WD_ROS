@@ -8,6 +8,8 @@ from torch.autograd import Variable
 
 from torchsummaryX import summary
 
+import datetime
+
 normalize = transforms.Normalize(
     #mean=[121.50361069 / 127., 122.37611083 / 127., 121.25987563 / 127.],
     mean=[127. / 255., 127. / 255., 127. / 255.],
@@ -66,3 +68,4 @@ for batch_idx, (prev_current_img, prev_current_odom) in enumerate(train_loader):
 
     print('Batch : {} / Loss : {}'.format(batch_idx, loss))
 
+torch.save(deepvo_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
