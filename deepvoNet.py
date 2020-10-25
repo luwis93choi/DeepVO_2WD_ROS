@@ -55,7 +55,7 @@ class DeepVONet(nn.Module):
         # LSTM 2
         self.lstm2 = nn.LSTMCell(1000, 1000)
 
-        # Linear Regression between RNN output features (1x1000) and Pose vector (1x6) (Roll, Pitch, Yaw, X, Y, Z)
+        # Linear Regression between RNN output features (1x1000) and Pose vector (1x6) (X Y Z Roll Pitch Yaw)
         self.fc = nn.Linear(in_features=1000, out_features=6)
 
         # Initialize hidden states of RNN
