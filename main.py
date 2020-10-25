@@ -1,13 +1,64 @@
-import deepvoNet as deepvo
-import dataloader as loader
+from deepvoNet import DeepVONet
+from dataloader import voDataLoader
 
-voloader = loader.voDataLoader(img_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/dataset/sequences',
-                               pose_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/data_odometry_poses/dataset/poses',
-                               transform=None,
-                               test=False,
-                               train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
-                               test_sequence=['01'])
-while True:
-    voloader.__getitem__(0)
+import torch
+import torch.optim as optim
+from torchvision import transforms
+from torch.autograd import Variable
 
-deepvo_model = deepvo.DeepVONet()
+from torchsummary import summary
+
+normalize = transforms.Normalize(
+    #mean=[121.50361069 / 127., 122.37611083 / 127., 121.25987563 / 127.],
+    mean=[127. / 255., 127. / 255., 127. / 255.],
+    std=[1 / 255., 1 / 255., 1 / 255.]
+)
+
+preprocess = transforms.Compose([
+    transforms.Resize((384, 1280)),
+    transforms.CenterCrop((384, 1280)),
+    transforms.ToTensor(),
+    normalize
+])
+
+deepvo_model = DeepVONet()
+deepvo_model.cuda()
+
+deepvo_model.train()
+deepvo_model.training = True
+
+train_loader = torch.utils.data.DataLoader(voDataLoader(img_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/dataset/sequences',
+                                                        pose_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/data_odometry_poses/dataset/poses',
+                                                        transform=preprocess,
+                                                        test=False,
+                                                        train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10'],
+                                                        test_sequence=['01']),
+                                                        batch_size=1, shuffle=True, drop_last=True)
+
+criterion = torch.nn.MSELoss()
+optimizer = optim.SGD(deepvo_model.parameters(), lr=0.0001)
+
+summary(deepvo_model, (6, 384, 1280))
+
+for batch_idx, (prev_current_img, prev_current_odom) in enumerate(train_loader):
+
+    #prev_current_img.cuda()
+    #prev_current_odom.cuda()
+
+    prev_current_img = Variable(prev_current_img.cuda())
+    prev_current_odom = Variable(prev_current_odom.cuda())
+
+    estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
+
+    deepvo_model.reset_hidden_states(size=1, zero=True)
+
+    estimated_odom = deepvo_model(prev_current_img)
+
+    loss = criterion(estimated_odom, prev_current_odom)
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    print('Batch : {} / Loss : {}'.format(batch_idx, loss))
+

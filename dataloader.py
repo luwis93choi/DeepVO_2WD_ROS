@@ -26,6 +26,8 @@ class voDataLoader(torch.utils.data.Dataset):
 
         self.test = test
 
+        self.transform = transform      # Image transformation conditions (Resolution Change)
+
         if self.test is False:
             self.sequence_idx = 0
             self.data_idx = 1        # Since DeepVO requires 2 consecutive images, Data Index starts from 1
@@ -121,13 +123,18 @@ class voDataLoader(torch.utils.data.Dataset):
                 self.pose_file = open(self.pose_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '.txt', 'r')
 
             ### Dataset Image Preparation ###
+            # Load Image at t-1 and t
             base_path = self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'
 
             prev_img = Image.open(base_path + '/' + self.img_path[self.data_idx-1]).convert('RGB')
             current_img = Image.open(base_path + '/' + self.img_path[self.data_idx]).convert('RGB')
 
-            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
+            # Transform the image according to the transformation conditions
+            if self.transform is not None:
+                prev_img = self.transform(prev_img)
+                current_img = self.transform(current_img)
 
+            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
             # Save previous groundtruth as t-1 value
             self.prev_pose_T = self.current_pose_T
             self.prev_pose_Rmat = self.current_pose_Rmat
@@ -145,14 +152,19 @@ class voDataLoader(torch.utils.data.Dataset):
             prev_pitch = math.atan2(-1 * self.prev_pose_Rmat[2][0], math.sqrt(self.prev_pose_Rmat[2][1]**2 + self.prev_pose_Rmat[2][2]**2))
             prev_yaw = math.atan2(self.prev_pose_Rmat[1][0], self.prev_pose_Rmat[0][0])
 
-            print(self.prev_pose_Rmat)
-            print('Prev Roll {}, Prevl Pitch {}, Prev_Yaw {}'.format(prev_roll, prev_pitch, prev_yaw))
-            print('-----------------------------------------')
-            # Compute the difference between groundtruth at t-1 and t
+            current_roll = math.atan2(self.current_pose_Rmat[2][1], self.current_pose_Rmat[2][2])
+            current_pitch = math.atan2(-1 * self.current_pose_Rmat[2][0], math.sqrt(self.current_pose_Rmat[2][1]**2 + self.current_pose_Rmat[2][2]**2))
+            current_yaw = math.atan2(self.current_pose_Rmat[1][0], self.current_pose_Rmat[0][0])
+
+            # Compute the euler angle difference between groundtruth at t-1 and t
+            droll = current_roll - prev_roll
+            dpitch = current_pitch - prev_pitch
+            dyaw = current_yaw - prev_yaw
 
             # Compute translation difference between groundtruth at t-1 and t
-            
-            # Prepare 6 DOF pose vector (X Y Z Roll Pitch Yaw)
+            dx = self.current_pose_T[0] - self.prev_pose_T[0]
+            dy = self.current_pose_T[1] - self.prev_pose_T[1]
+            dz = self.current_pose_T[2] - self.prev_pose_T[2]
 
             #########################################################################
 
@@ -173,13 +185,18 @@ class voDataLoader(torch.utils.data.Dataset):
                 self.pose_file = open(self.pose_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '.txt', 'r')
 
             ### Dataset Image Preparation ###
+            # Load Image at t-1 and t
             base_path = self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'
 
             prev_img = Image.open(base_path + '/' + self.img_path[self.data_idx-1]).convert('RGB')
             current_img = Image.open(base_path + '/' + self.img_path[self.data_idx]).convert('RGB')
 
-            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
+            # Transform the image according to the transformation conditions
+            if self.transform is not None:
+                prev_img = self.transform(prev_img)
+                current_img = self.transform(current_img)
 
+            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
             # Save previous groundtruth as t-1 value
             self.prev_pose_T = self.current_pose_T
             self.prev_pose_Rmat = self.current_pose_Rmat
@@ -193,12 +210,23 @@ class voDataLoader(torch.utils.data.Dataset):
                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
 
             # Convert rotation matrix of groundtruth into euler angle
+            prev_roll = math.atan2(self.prev_pose_Rmat[2][1], self.prev_pose_Rmat[2][2])
+            prev_pitch = math.atan2(-1 * self.prev_pose_Rmat[2][0], math.sqrt(self.prev_pose_Rmat[2][1]**2 + self.prev_pose_Rmat[2][2]**2))
+            prev_yaw = math.atan2(self.prev_pose_Rmat[1][0], self.prev_pose_Rmat[0][0])
+
+            current_roll = math.atan2(self.current_pose_Rmat[2][1], self.current_pose_Rmat[2][2])
+            current_pitch = math.atan2(-1 * self.current_pose_Rmat[2][0], math.sqrt(self.current_pose_Rmat[2][1]**2 + self.current_pose_Rmat[2][2]**2))
+            current_yaw = math.atan2(self.current_pose_Rmat[1][0], self.current_pose_Rmat[0][0])
 
             # Compute the euler angle difference between groundtruth at t-1 and t
+            droll = current_roll - prev_roll
+            dpitch = current_pitch - prev_pitch
+            dyaw = current_yaw - prev_yaw
 
             # Compute translation difference between groundtruth at t-1 and t
-
-            # Prepare 6 DOF pose vector (X Y Z Roll Pitch Yaw)
+            dx = self.current_pose_T[0] - self.prev_pose_T[0]
+            dy = self.current_pose_T[1] - self.prev_pose_T[1]
+            dz = self.current_pose_T[2] - self.prev_pose_T[2]
             
             #########################################################################
 
@@ -210,7 +238,10 @@ class voDataLoader(torch.utils.data.Dataset):
         # Stack the image as indicated in DeepVO paper
         prev_current_stacked_img = np.asarray(np.concatenate([prev_img, current_img], axis=0))
 
-        return prev_current_stacked_img
+        # Prepare 6 DOF pose vector between t-1 and t (dX dY dZ dRoll dPitch dYaw)
+        prev_current_odom = np.asarray([dx, dy, dz, droll, dpitch, dyaw])
+
+        return prev_current_stacked_img, prev_current_odom
 
     def __len__(self):
 
