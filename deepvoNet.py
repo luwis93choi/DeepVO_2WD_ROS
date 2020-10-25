@@ -11,6 +11,8 @@ class DeepVONet(nn.Module):
     def __init__(self):
         super(DeepVONet, self).__init__()
 
+        self.use_cuda = False
+
         # CNN Layer 1
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3))
         self.relu1 = nn.ReLU(inplace=True)  # inplace = True : ReLU will modify the input directly without allocating any additional memory for ouput
@@ -23,7 +25,7 @@ class DeepVONet(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
         # CNN Layer 3
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=(5, 5), stride=(1, 1), padding=(2, 2))
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
         self.relu3 = nn.ReLU(inplace=True)
 
         # CNN Layer 3_1
@@ -50,13 +52,13 @@ class DeepVONet(nn.Module):
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
 
         # LSTM 1
-        self.lstm1 = nn.LSTMCell(20*6*1024, 1000)
+        self.lstm1 = nn.LSTMCell(20*6*1024, 100)
 
         # LSTM 2
-        self.lstm2 = nn.LSTMCell(1000, 1000)
+        self.lstm2 = nn.LSTMCell(100, 100)
 
         # Linear Regression between RNN output features (1x1000) and Pose vector between t-1 and t (1x6) (dX dY dZ dRoll dPitch dYaw)
-        self.fc = nn.Linear(in_features=1000, out_features=6)
+        self.fc = nn.Linear(in_features=100, out_features=6)
 
         # Initialize hidden states of RNN
         self.reset_hidden_states()
@@ -66,29 +68,29 @@ class DeepVONet(nn.Module):
         if zero == True:
             
             # Hidden State 1 for LSTM 1 (1x1000)
-            self.hx1 = Variable(torch.zeros(size, 1000)) 
+            self.hx1 = Variable(torch.zeros(size, 100)) 
             # Cell State for LSTM 1 (1x1000)
-            self.cx1 = Variable(torch.zeros(size, 1000))
+            self.cx1 = Variable(torch.zeros(size, 100))
 
             # Hidden State 2 for LSTM 2 (1x1000)
-            self.hx2 = Variable(torch.zeros(size, 1000))
+            self.hx2 = Variable(torch.zeros(size, 100))
             # Cell State for LSTM 2 (1x1000)
-            self.cx2 = Variable(torch.zeros(size, 1000))
+            self.cx2 = Variable(torch.zeros(size, 100))
 
         else:
 
             # Hidden State 1 for LSTM 1 (1x1000)
-            self.hx1 = Variable(self.hx1) 
+            self.hx1 = Variable(self.hx1.data) 
             # Cell State for LSTM 1 (1x1000)
-            self.cx1 = Variable(self.cx1)
+            self.cx1 = Variable(self.cx1.data)
 
             # Hidden State 2 for LSTM 2 (1x1000)
-            self.hx2 = Variable(self.hx2)
+            self.hx2 = Variable(self.hx2.data)
             # Cell State for LSTM 2 (1x1000)
-            self.cx2 = Variable(self.cx2)
+            self.cx2 = Variable(self.cx2.data)
 
         # If CUDA is available, prepare and copy hidden states and cell states in CUDA memory
-        if next(self.parameters()).is_cuda == True:
+        if self.use_cuda == True:
 
             # Hidden State 1 for LSTM 1 in CUDA memory (1x1000)
             self.hx1 = self.hx1.cuda()
@@ -102,7 +104,7 @@ class DeepVONet(nn.Module):
 
     # Foward pass of DeepVO NN
     def forward(self, x):
-
+        
         # Forward pass through CNN Layer 1
         x = self.conv1(x)
         x = self.relu1(x)
@@ -136,7 +138,7 @@ class DeepVONet(nn.Module):
 
         # Reshpae/Flatten the output of CNN in order to use it as the input of RNN
         x = x.view(x.size(0), 20 * 6 * 1024)
-
+        
         # Forward pass into LSTM 1
         # hx1, cx1 are the values from previous sequence of CNN prediction and LSTM 1
         # hx1, cx1 are fed into current sequence of RNN in order to compute the geometric changes of CNN features
