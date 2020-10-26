@@ -103,7 +103,7 @@ for epoch in range(train_epoch):
         loss.backward()
         optimizer.step()
 
-        print('Batch : {} / Loss : {}'.format(batch_idx, loss))
+        print('[EPOCH {}] Batch : {} / Loss : {}'.format(epoch, batch_idx, loss))
         
         ax1.plot(train_plot_x, loss.item(), c=train_plot_color(train_loader.dataset.sequence_idx), marker='o')
         ax2.plot(train_plot_x, loss.item(), c=train_plot_color(train_loader.dataset.sequence_idx), marker='o')
