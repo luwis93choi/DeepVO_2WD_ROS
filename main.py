@@ -93,7 +93,12 @@ for epoch in range(train_epoch):
 
         estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
 
-        deepvo_model.reset_hidden_states(size=1, zero=True)
+        if train_loader.dataset.sequence_change == True:
+
+            # Sequence has changed LSTM reset
+            print('[Sequence Change] LSTM Reset')
+
+            deepvo_model.reset_hidden_states(size=1, zero=True)
 
         estimated_odom = deepvo_model(prev_current_img)
 

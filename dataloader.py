@@ -24,9 +24,13 @@ class voDataLoader(torch.utils.data.Dataset):
         self.train_sequence = train_sequence
         self.test_sequence = test_sequence
 
+        self.len = 0    # The size of dataset in use
+
         self.test = test
 
         self.transform = transform      # Image transformation conditions (Resolution Change)
+
+        self.sequence_change = False
 
         if self.test is False:
             self.sequence_idx = 0
@@ -67,8 +71,6 @@ class voDataLoader(torch.utils.data.Dataset):
             self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
                                             0.0, 0.0, 0.0,
                                             0.0, 0.0, 0.0])
-
-        self.len = 0    # The size of dataset in use
 
         if self.test is False:   # Count the number of data used in train dataset
 
@@ -205,12 +207,16 @@ class voDataLoader(torch.utils.data.Dataset):
 
                     print('[Train Sequence Change] : {}'.format(self.train_sequence[self.sequence_idx]))
                     
+                    self.sequence_change = True     # Notify the network that sequence has changed
+
                     prev_current_stacked_img, prev_current_odom = self.load_data()
 
                     return prev_current_stacked_img, prev_current_odom
             else:
 
                 prev_current_stacked_img, prev_current_odom = self.load_data()
+
+                self.sequence_change = False    # Notify the network that sequence has not changed
 
                 return prev_current_stacked_img, prev_current_odom
 
@@ -245,6 +251,8 @@ class voDataLoader(torch.utils.data.Dataset):
 
                     print('[Test Sequence Change] : {}'.format(self.train_sequence[self.sequence_idx]))
 
+                    self.sequence_change = True     # Notify the network that sequence has changed
+
                     prev_current_stacked_img, prev_current_odom = self.load_data()
 
                     return prev_current_stacked_img, prev_current_odom
@@ -252,6 +260,8 @@ class voDataLoader(torch.utils.data.Dataset):
             else:
 
                 prev_current_stacked_img, prev_current_odom = self.load_data()
+
+                self.sequence_change = False    # Notify the network that sequence has not changed
 
                 return prev_current_stacked_img, prev_current_odom
 
