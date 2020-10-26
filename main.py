@@ -39,7 +39,7 @@ deepvo_model.train()
 deepvo_model.training = True
 
 train_epoch = 3
-train_sequence = ['01']
+train_sequence = ['00']
 #train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
 test_sequence = ['01']
 
@@ -125,6 +125,10 @@ for epoch in range(train_epoch):
 
     plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
 
+    print('[Epoch {} Complete] Loader Reset'.format(epoch))
     train_loader.dataset.reset_loader()
+
+    print('[Epoch {} Complete] LSTM Reset'.format(epoch))
+    deepvo_model.reset_hidden_states(size=1, zero=True)
 
 torch.save(deepvo_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
