@@ -31,6 +31,7 @@ class voDataLoader(torch.utils.data.Dataset):
         if self.test is False:
             self.sequence_idx = 0
             self.data_idx = 1        # Since DeepVO requires 2 consecutive images, Data Index starts from 1
+            self.sequence_num = len(self.train_sequence)
             self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2')))
             self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'))
 
@@ -49,7 +50,8 @@ class voDataLoader(torch.utils.data.Dataset):
 
         else:
             self.sequence_idx = 0
-            self.data_idx = 0
+            self.data_idx = 1
+            self.sequence_num = len(self.train_sequence)
             self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2')))
             self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'))
 
@@ -78,6 +80,8 @@ class voDataLoader(torch.utils.data.Dataset):
                     if not line: break
 
                     self.len += 1
+                self.len -= 1
+                f.close()
 
             print('Train Sequence : {}'.format(self.train_sequence))
             print('Size of training dataset : {}'.format(self.len))
@@ -92,9 +96,73 @@ class voDataLoader(torch.utils.data.Dataset):
                     if not line: break
 
                     self.len += 1
+                self.len -= 1
+                f.close()
 
             print('Test Sequence : {}'.format(self.test_sequence))
             print('Size of test dataset : {}'.format(self.len))
+
+    # Dataset Load Function
+    def load_data(self):
+        ### Dataset Image Preparation ###
+        # Load Image at t-1 and t
+        base_path = self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'
+
+        prev_img = Image.open(base_path + '/' + self.img_path[self.data_idx-1]).convert('RGB')
+        current_img = Image.open(base_path + '/' + self.img_path[self.data_idx]).convert('RGB')
+
+        # Transform the image according to the transformation conditions
+        if self.transform is not None:
+            prev_img = self.transform(prev_img)
+            current_img = self.transform(current_img)
+
+        ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
+        # Save previous groundtruth as t-1 value
+        self.prev_pose_T = self.current_pose_T
+        self.prev_pose_Rmat = self.current_pose_Rmat
+
+        # Load groundtruth at t
+        line = self.pose_file.readline()
+        pose = line.strip().split()
+        self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+        self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
+                                        [float(pose[4]), float(pose[5]), float(pose[6])], 
+                                        [float(pose[8]), float(pose[9]), float(pose[10])]])
+
+        # Convert rotation matrix of groundtruth into euler angle
+        prev_roll = math.atan2(self.prev_pose_Rmat[2][1], self.prev_pose_Rmat[2][2])
+        prev_pitch = math.atan2(-1 * self.prev_pose_Rmat[2][0], math.sqrt(self.prev_pose_Rmat[2][1]**2 + self.prev_pose_Rmat[2][2]**2))
+        prev_yaw = math.atan2(self.prev_pose_Rmat[1][0], self.prev_pose_Rmat[0][0])
+
+        current_roll = math.atan2(self.current_pose_Rmat[2][1], self.current_pose_Rmat[2][2])
+        current_pitch = math.atan2(-1 * self.current_pose_Rmat[2][0], math.sqrt(self.current_pose_Rmat[2][1]**2 + self.current_pose_Rmat[2][2]**2))
+        current_yaw = math.atan2(self.current_pose_Rmat[1][0], self.current_pose_Rmat[0][0])
+
+        # Compute the euler angle difference between groundtruth at t-1 and t
+        droll = current_roll - prev_roll
+        dpitch = current_pitch - prev_pitch
+        dyaw = current_yaw - prev_yaw
+
+        # Compute translation difference between groundtruth at t-1 and t
+        dx = self.current_pose_T[0] - self.prev_pose_T[0]
+        dy = self.current_pose_T[1] - self.prev_pose_T[1]
+        dz = self.current_pose_T[2] - self.prev_pose_T[2]
+
+        #########################################################################
+
+        #print(self.current_sequence_data_num)
+        #print(self.len)
+        #print(base_path + '/' + self.img_path[self.data_idx])
+
+        self.data_idx += 1   # Increase data index everytime data is consumed by DeepVO network
+
+        # Stack the image as indicated in DeepVO paper
+        prev_current_stacked_img = np.asarray(np.concatenate([prev_img, current_img], axis=0))
+
+        # Prepare 6 DOF pose vector between t-1 and t (dX dY dZ dRoll dPitch dYaw)
+        prev_current_odom = np.asarray([dx, dy, dz, droll, dpitch, dyaw])
+
+        return prev_current_stacked_img, prev_current_odom
 
     def __getitem__(self, index):
         
@@ -114,70 +182,37 @@ class voDataLoader(torch.utils.data.Dataset):
                 
                 self.sequence_idx += 1
                 
-                self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2')))
-                self.data_idx = 1
+                if self.sequence_idx < self.sequence_num:
 
-                self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'))
+                    self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2')))
+                    self.data_idx = 1
 
-                # current pose data reset for new sequence
-                self.pose_file.close()
-                self.pose_file = open(self.pose_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '.txt', 'r')
-                line = self.pose_file.readline()
-                pose = line.strip().split()
-                self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
-                self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
-                                                [float(pose[4]), float(pose[5]), float(pose[6])], 
-                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
-                self.prev_pose_T = np.array([0.0, 0.0, 0.0])
-                self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
-                                                0.0, 0.0, 0.0,
-                                                0.0, 0.0, 0.0])
+                    self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'))
 
-            ### Dataset Image Preparation ###
-            # Load Image at t-1 and t
-            base_path = self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'
+                    # current pose data reset for new sequence
+                    self.pose_file.close()
+                    self.pose_file = open(self.pose_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '.txt', 'r')
+                    line = self.pose_file.readline()
+                    pose = line.strip().split()
+                    self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+                    self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
+                                                    [float(pose[4]), float(pose[5]), float(pose[6])], 
+                                                    [float(pose[8]), float(pose[9]), float(pose[10])]])
+                    self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+                    self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                                    0.0, 0.0, 0.0,
+                                                    0.0, 0.0, 0.0])
 
-            prev_img = Image.open(base_path + '/' + self.img_path[self.data_idx-1]).convert('RGB')
-            current_img = Image.open(base_path + '/' + self.img_path[self.data_idx]).convert('RGB')
+                    print('[Train Sequence Change] : {}'.format(self.train_sequence[self.sequence_idx]))
+                    
+                    prev_current_stacked_img, prev_current_odom = self.load_data()
 
-            # Transform the image according to the transformation conditions
-            if self.transform is not None:
-                prev_img = self.transform(prev_img)
-                current_img = self.transform(current_img)
+                    return prev_current_stacked_img, prev_current_odom
+            else:
 
-            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
-            # Save previous groundtruth as t-1 value
-            self.prev_pose_T = self.current_pose_T
-            self.prev_pose_Rmat = self.current_pose_Rmat
+                prev_current_stacked_img, prev_current_odom = self.load_data()
 
-            # Load groundtruth at t
-            line = self.pose_file.readline()
-            pose = line.strip().split()
-            self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
-            self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
-                                               [float(pose[4]), float(pose[5]), float(pose[6])], 
-                                               [float(pose[8]), float(pose[9]), float(pose[10])]])
-
-            # Convert rotation matrix of groundtruth into euler angle
-            prev_roll = math.atan2(self.prev_pose_Rmat[2][1], self.prev_pose_Rmat[2][2])
-            prev_pitch = math.atan2(-1 * self.prev_pose_Rmat[2][0], math.sqrt(self.prev_pose_Rmat[2][1]**2 + self.prev_pose_Rmat[2][2]**2))
-            prev_yaw = math.atan2(self.prev_pose_Rmat[1][0], self.prev_pose_Rmat[0][0])
-
-            current_roll = math.atan2(self.current_pose_Rmat[2][1], self.current_pose_Rmat[2][2])
-            current_pitch = math.atan2(-1 * self.current_pose_Rmat[2][0], math.sqrt(self.current_pose_Rmat[2][1]**2 + self.current_pose_Rmat[2][2]**2))
-            current_yaw = math.atan2(self.current_pose_Rmat[1][0], self.current_pose_Rmat[0][0])
-
-            # Compute the euler angle difference between groundtruth at t-1 and t
-            droll = current_roll - prev_roll
-            dpitch = current_pitch - prev_pitch
-            dyaw = current_yaw - prev_yaw
-
-            # Compute translation difference between groundtruth at t-1 and t
-            dx = self.current_pose_T[0] - self.prev_pose_T[0]
-            dy = self.current_pose_T[1] - self.prev_pose_T[1]
-            dz = self.current_pose_T[2] - self.prev_pose_T[2]
-
-            #########################################################################
+                return prev_current_stacked_img, prev_current_odom
 
         # In test mode
         else:
@@ -187,84 +222,81 @@ class voDataLoader(torch.utils.data.Dataset):
                 
                 self.sequence_idx += 1
                 
-                self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2')))
-                self.data_idx = 1
+                if self.sequence_idx < self.sequence_num:
 
-                self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'))
+                    self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2')))
+                    self.data_idx = 1
 
-                # current pose data reset for new sequence
-                self.pose_file.close()
-                self.pose_file = open(self.pose_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '.txt', 'r')
-                line = self.pose_file.readline()
-                pose = line.strip().split()
-                self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
-                self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
-                                                [float(pose[4]), float(pose[5]), float(pose[6])], 
-                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
-                self.prev_pose_T = np.array([0.0, 0.0, 0.0])
-                self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
-                                                0.0, 0.0, 0.0,
-                                                0.0, 0.0, 0.0])
+                    self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'))
 
-            ### Dataset Image Preparation ###
-            # Load Image at t-1 and t
-            base_path = self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'
+                    # current pose data reset for new sequence
+                    self.pose_file.close()
+                    self.pose_file = open(self.pose_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '.txt', 'r')
+                    line = self.pose_file.readline()
+                    pose = line.strip().split()
+                    self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+                    self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
+                                                    [float(pose[4]), float(pose[5]), float(pose[6])], 
+                                                    [float(pose[8]), float(pose[9]), float(pose[10])]])
+                    self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+                    self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                                    0.0, 0.0, 0.0,
+                                                    0.0, 0.0, 0.0])
 
-            prev_img = Image.open(base_path + '/' + self.img_path[self.data_idx-1]).convert('RGB')
-            current_img = Image.open(base_path + '/' + self.img_path[self.data_idx]).convert('RGB')
+                    print('[Test Sequence Change] : {}'.format(self.train_sequence[self.sequence_idx]))
 
-            # Transform the image according to the transformation conditions
-            if self.transform is not None:
-                prev_img = self.transform(prev_img)
-                current_img = self.transform(current_img)
+                    prev_current_stacked_img, prev_current_odom = self.load_data()
 
-            ### Pose Data (Pose difference/change between t-1 and t) Preparation ###
-            # Save previous groundtruth as t-1 value
-            self.prev_pose_T = self.current_pose_T
-            self.prev_pose_Rmat = self.current_pose_Rmat
+                    return prev_current_stacked_img, prev_current_odom
 
-            # Load groundtruth at t
+            else:
+
+                prev_current_stacked_img, prev_current_odom = self.load_data()
+
+                return prev_current_stacked_img, prev_current_odom
+
+    def __len__(self):
+
+        return self.len
+
+    def reset_loader(self):
+
+        if self.test is False:
+            self.sequence_idx = 0
+            self.data_idx = 1        # Since DeepVO requires 2 consecutive images, Data Index starts from 1
+            self.sequence_num = len(self.train_sequence)
+            self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2')))
+            self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '/image_2'))
+
+            # Read 0th pose data and save it as current pose value
+            self.pose_file = open(self.pose_dataset_path + '/' + self.train_sequence[self.sequence_idx] + '.txt', 'r')
             line = self.pose_file.readline()
             pose = line.strip().split()
             self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
             self.current_pose_Rmat = np.array([[float(pose[0]), float(pose[1]), float(pose[2])], 
                                                [float(pose[4]), float(pose[5]), float(pose[6])], 
                                                [float(pose[8]), float(pose[9]), float(pose[10])]])
+            self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+            self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0])
 
-            # Convert rotation matrix of groundtruth into euler angle
-            prev_roll = math.atan2(self.prev_pose_Rmat[2][1], self.prev_pose_Rmat[2][2])
-            prev_pitch = math.atan2(-1 * self.prev_pose_Rmat[2][0], math.sqrt(self.prev_pose_Rmat[2][1]**2 + self.prev_pose_Rmat[2][2]**2))
-            prev_yaw = math.atan2(self.prev_pose_Rmat[1][0], self.prev_pose_Rmat[0][0])
+        else:
+            self.sequence_idx = 0
+            self.data_idx = 1
+            self.sequence_num = len(self.train_sequence)
+            self.current_sequence_data_num = len(sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2')))
+            self.img_path = sorted(os.listdir(self.img_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '/image_2'))
 
-            current_roll = math.atan2(self.current_pose_Rmat[2][1], self.current_pose_Rmat[2][2])
-            current_pitch = math.atan2(-1 * self.current_pose_Rmat[2][0], math.sqrt(self.current_pose_Rmat[2][1]**2 + self.current_pose_Rmat[2][2]**2))
-            current_yaw = math.atan2(self.current_pose_Rmat[1][0], self.current_pose_Rmat[0][0])
-
-            # Compute the euler angle difference between groundtruth at t-1 and t
-            droll = current_roll - prev_roll
-            dpitch = current_pitch - prev_pitch
-            dyaw = current_yaw - prev_yaw
-
-            # Compute translation difference between groundtruth at t-1 and t
-            dx = self.current_pose_T[0] - self.prev_pose_T[0]
-            dy = self.current_pose_T[1] - self.prev_pose_T[1]
-            dz = self.current_pose_T[2] - self.prev_pose_T[2]
-            
-            #########################################################################
-
-        #print(self.current_sequence_data_num)
-        #print(base_path + '/' + self.img_path[self.data_idx])
-
-        self.data_idx += 1   # Increase data index everytime data is consumed by DeepVO network
-
-        # Stack the image as indicated in DeepVO paper
-        prev_current_stacked_img = np.asarray(np.concatenate([prev_img, current_img], axis=0))
-
-        # Prepare 6 DOF pose vector between t-1 and t (dX dY dZ dRoll dPitch dYaw)
-        prev_current_odom = np.asarray([dx, dy, dz, droll, dpitch, dyaw])
-        
-        return prev_current_stacked_img, prev_current_odom
-
-    def __len__(self):
-
-        return self.len
+            # Read 0th pose data and save it as current pose value
+            self.pose_file = open(self.pose_dataset_path + '/' + self.test_sequence[self.sequence_idx] + '.txt', 'r')
+            line = self.pose_file.readline()
+            pose = line.strip().split()
+            self.current_pose_T = np.array([float(pose[3]), float(pose[7]), float(pose[11])])
+            self.current_pose_Rmat = np.array([float(pose[0]), float(pose[1]), float(pose[2]), 
+                                               float(pose[4]), float(pose[5]), float(pose[6]), 
+                                               float(pose[8]), float(pose[9]), float(pose[10])])
+            self.prev_pose_T = np.array([0.0, 0.0, 0.0])
+            self.prev_pose_Rmat = np.array([0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0,
+                                            0.0, 0.0, 0.0])

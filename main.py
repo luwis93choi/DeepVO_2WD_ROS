@@ -36,6 +36,8 @@ if str(PROCESSOR) == 'cuda:0':
 deepvo_model.train()
 deepvo_model.training = True
 
+train_epoch = 3
+
 train_loader = torch.utils.data.DataLoader(voDataLoader(img_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/dataset/sequences',
                                                         pose_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/data_odometry_poses/dataset/poses',
                                                         transform=preprocess,
@@ -49,23 +51,29 @@ optimizer = optim.SGD(deepvo_model.parameters(), lr=0.0001)
 
 summary(deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(PROCESSOR)))
 
-for batch_idx, (prev_current_img, prev_current_odom) in enumerate(train_loader):
+for epoch in range(train_epoch):
 
-    prev_current_img = Variable(prev_current_img.to(PROCESSOR))
-    prev_current_odom = Variable(prev_current_odom.to(PROCESSOR))
+    print('[EPOCH] : {}'.format(epoch))
 
-    estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
+    for batch_idx, (prev_current_img, prev_current_odom) in enumerate(train_loader):
 
-    deepvo_model.reset_hidden_states(size=1, zero=True)
+        prev_current_img = Variable(prev_current_img.to(PROCESSOR))
+        prev_current_odom = Variable(prev_current_odom.to(PROCESSOR))
 
-    estimated_odom = deepvo_model(prev_current_img)
+        estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
 
-    loss = criterion(estimated_odom, prev_current_odom.float())
+        deepvo_model.reset_hidden_states(size=1, zero=True)
 
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+        estimated_odom = deepvo_model(prev_current_img)
 
-    print('Batch : {} / Loss : {}'.format(batch_idx, loss))
+        loss = criterion(estimated_odom, prev_current_odom.float())
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        print('Batch : {} / Loss : {}'.format(batch_idx, loss))
+
+    train_loader.dataset.reset_loader()
 
 torch.save(deepvo_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
