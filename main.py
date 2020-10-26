@@ -100,11 +100,13 @@ for epoch in range(train_epoch):
 
             deepvo_model.reset_hidden_states(size=1, zero=True)
 
+        optimizer.zero_grad()
+        
         estimated_odom = deepvo_model(prev_current_img)
+        deepvo_model.reset_hidden_states(size=1, zero=False)
 
         loss = criterion(estimated_odom, prev_current_odom.float())
 
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
