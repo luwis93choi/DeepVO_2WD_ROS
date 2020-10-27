@@ -39,16 +39,14 @@ deepvo_model.train()
 deepvo_model.training = True
 
 train_epoch = 3
-train_sequence = ['00']
+train_sequence = ['01']
 #train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
 test_sequence = ['01']
 
 train_loader = torch.utils.data.DataLoader(voDataLoader(img_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/dataset/sequences',
                                                         pose_dataset_path='/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/data_odometry_poses/dataset/poses',
                                                         transform=preprocess,
-                                                        test=False,
-                                                        train_sequence=train_sequence,
-                                                        test_sequence=test_sequence),
+                                                        sequence=train_sequence),
                                                         batch_size=1, shuffle=True, drop_last=True)
 
 criterion = torch.nn.MSELoss()
