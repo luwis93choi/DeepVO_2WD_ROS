@@ -122,13 +122,13 @@ class tester():
                                             [predicted_dy], 
                                             [predicted_dz]])
 
-                current_pose_T = current_pose_T + current_pose_R.dot(translation_Mat)
-                current_pose_R = rotation_Mat.dot(current_pose_R)
+                #current_pose_T = current_pose_T + current_pose_R.dot(translation_Mat)
+                #current_pose_R = rotation_Mat.dot(current_pose_R)
 
                 current_pose_T = rotation_Mat.dot(current_pose_T) + translation_Mat
 
-                #estimated_x = estimated_x + predicted_dx
-                #estimated_z = estimated_z + predicted_dz
+                estimated_x = estimated_x + predicted_dx
+                estimated_z = estimated_z + predicted_dz
 
                 print(rotation_Mat)
                 print(translation_Mat)

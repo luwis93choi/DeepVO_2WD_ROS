@@ -52,13 +52,13 @@ class DeepVONet(nn.Module):
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
 
         # LSTM 1
-        self.lstm1 = nn.LSTMCell(20*6*1024, 100)
+        self.lstm1 = nn.LSTMCell(20*6*1024, 1000)
 
         # LSTM 2
-        self.lstm2 = nn.LSTMCell(100, 100)
+        self.lstm2 = nn.LSTMCell(1000, 1000)
 
         # Linear Regression between RNN output features (1x1000) and Pose vector between t-1 and t (1x6) (dX dY dZ dRoll dPitch dYaw)
-        self.fc = nn.Linear(in_features=100, out_features=6)
+        self.fc = nn.Linear(in_features=1000, out_features=6)
 
         # Initialize hidden states of RNN
         self.reset_hidden_states()
@@ -68,14 +68,14 @@ class DeepVONet(nn.Module):
         if zero == True:
             
             # Hidden State 1 for LSTM 1 (1x1000)
-            self.hx1 = Variable(torch.zeros(size, 100)) 
+            self.hx1 = Variable(torch.zeros(size, 1000)) 
             # Cell State for LSTM 1 (1x1000)
-            self.cx1 = Variable(torch.zeros(size, 100))
+            self.cx1 = Variable(torch.zeros(size, 1000))
 
             # Hidden State 2 for LSTM 2 (1x1000)
-            self.hx2 = Variable(torch.zeros(size, 100))
+            self.hx2 = Variable(torch.zeros(size, 1000))
             # Cell State for LSTM 2 (1x1000)
-            self.cx2 = Variable(torch.zeros(size, 100))
+            self.cx2 = Variable(torch.zeros(size, 1000))
 
         else:
 

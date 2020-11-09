@@ -19,7 +19,7 @@ img_dataset_path = '/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_
 pose_dataset_path = '/media/luwis/Linux Workspace/ICSL_Project/Visual SLAM/KITTI_data_odometry_color/data_odometry_poses/dataset/poses'
 
 train_epoch = 2
-train_sequence = ['01']
+train_sequence = ['00']
 #train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
 test_sequence = ['00']
 
@@ -44,9 +44,9 @@ deepvo_trainer = trainer(use_cuda=True,
                          plot_batch=False, plot_epoch=True)
 
 deepvo_trainer.train()
-'''
 
-deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/DeepVO_2020-11-01 12_04_06.019574.pth')
+'''
+deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/DeepVO_2020-11-09 20:51:39.195046.pth')
 
 deepvo_tester = tester(NN_model=deepvo_model,
                        use_cuda=True, loader_preprocess_param=preprocess,
