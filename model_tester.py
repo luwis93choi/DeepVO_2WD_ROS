@@ -10,6 +10,7 @@ from torchsummaryX import summary
 
 import datetime
 import numpy as np
+import math
 from matplotlib import pyplot as plt
 
 class tester():
@@ -18,7 +19,7 @@ class tester():
                        use_cuda=True, 
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
-                       test_epoch=1, test_sequence=['01'], test_batch=1,
+                       test_epoch=1, test_sequence=[], test_batch=1,
                        plot_batch=False, plot_epoch=True):
 
         self.NN_model = NN_model
@@ -54,42 +55,26 @@ class tester():
                                                                     batch_size=self.test_batch, shuffle=True, drop_last=True)
 
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = optim.SGD(self.NN_model.parameters(), lr=0.0001)
-
+        
         summary(self.NN_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
-
-        # Prepare batch error graph
-        if self.plot_batch == True:
-            
-            self.test_plot_color = plt.cm.get_cmap('rainbow', len(test_sequence))
-            self.test_plot_x = 0
-
-            ### Plotting graph setup with broken y-axis ######################################
-            fig, (self.ax1, self.ax2) = plt.subplots(2, 1, sharex=True, figsize=(20, 8))
-            self.ax1.set_ylim(2, 30)
-            self.ax2.set_ylim(0, 1.5)
-
-            self.ax1.spines['bottom'].set_visible(False)
-            self.ax2.spines['top'].set_visible(False)
-
-            self.ax1.xaxis.tick_top()
-            self.ax1.tick_params(labeltop=False)
-            self.ax2.xaxis.tick_bottom()
-
-            d = .015    # how big to make the diagonal lines in axes coordinates
-                        # arguments to pass to plot, just so we don't keep repeating them
-            kwargs = dict(transform=self.ax1.transAxes, color='k', clip_on=False)
-            self.ax1.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-            self.ax1.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-
-            kwargs.update(transform=self.ax2.transAxes)  # switch to the bottom axes
-            self.ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-            self.ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
-            ################################################################################
 
     def run_test(self):
 
+        estimated_x = 0.0
+        estimated_y = 0.0
+        estimated_z = 0.0
+
+        current_pose_T = np.array([[0], 
+                                   [0], 
+                                   [0]])
+
+        current_pose_R = np.array([[1, 0, 0],
+                                   [0, 1, 0],
+                                   [0, 0, 1]])
         test_loss = []
+
+        fig = plt.figure(figsize=(20, 10))
+        plt.grid(True)
 
         for epoch in range(self.test_epoch):
 
@@ -112,36 +97,51 @@ class tester():
 
                     self.NN_model.reset_hidden_states(size=1, zero=True)
 
-                self.optimizer.zero_grad()
-                
                 estimated_odom = self.NN_model(prev_current_img)
                 self.NN_model.reset_hidden_states(size=1, zero=False)
 
                 loss = self.criterion(estimated_odom, prev_current_odom.float())
 
-                loss.backward()
-                self.optimizer.step()
-
                 print('[EPOCH {}] Batch : {} / Loss : {}'.format(epoch, batch_idx, loss))
-                    
-                # Plotting batch error graph
-                if self.plot_batch == True:
-                    self.ax1.plot(self.test_plot_x, loss.item(), c=self.test_plot_color(self.test_loader.dataset.sequence_idx), marker='o')
-                    self.ax2.plot(self.test_plot_x, loss.item(), c=self.test_plot_color(self.test_loader.dataset.sequence_idx), marker='o')
 
-                    self.ax1.set_title('DeepVO Test with KITTI [MSE Loss at each batch]\nTest Sequence ' + str(self.test_sequence))
-                    self.ax2.set_xlabel('Test Length')
-                    self.ax2.set_ylabel('MSELoss')
-                    
-                    self.test_plot_x += 1
+                predicted_odom = estimated_odom.data.cpu().numpy()
+
+                predicted_dx = predicted_odom[0][0]
+                predicted_dy = predicted_odom[0][1]
+                predicted_dz = predicted_odom[0][2]
+
+                predicted_roll = predicted_odom[0][3]
+                predicted_pitch = predicted_odom[0][4]
+                predicted_yaw = predicted_odom[0][5]
+
+                rotation_Mat = np.array([[np.cos(predicted_pitch)*np.cos(predicted_yaw), np.sin(predicted_roll)*np.sin(predicted_pitch)*np.cos(predicted_yaw) - np.cos(predicted_roll)*np.sin(predicted_yaw), np.cos(predicted_roll)*np.sin(predicted_pitch)*np.cos(predicted_yaw) + np.sin(predicted_roll)*np.sin(predicted_pitch)], 
+                                         [np.cos(predicted_pitch)*np.sin(predicted_yaw), np.sin(predicted_roll)*np.sin(predicted_pitch)*np.sin(predicted_yaw) + np.cos(predicted_roll)*np.cos(predicted_yaw), np.cos(predicted_roll)*np.sin(predicted_pitch)*np.sin(predicted_yaw) - np.sin(predicted_roll)*np.cos(predicted_pitch)], 
+                                         [-np.sin(predicted_pitch),                      np.sin(predicted_roll)*np.cos(predicted_pitch),                                                                      np.cos(predicted_roll)*np.cos(predicted_pitch)]])
+
+                translation_Mat = np.array([[predicted_dx], 
+                                            [predicted_dy], 
+                                            [predicted_dz]])
+
+                current_pose_T = current_pose_T + current_pose_R.dot(translation_Mat)
+                current_pose_R = rotation_Mat.dot(current_pose_R)
+
+                current_pose_T = rotation_Mat.dot(current_pose_T) + translation_Mat
+
+                #estimated_x = estimated_x + predicted_dx
+                #estimated_z = estimated_z + predicted_dz
+
+                print(rotation_Mat)
+                print(translation_Mat)
+                print(current_pose_T)
+
+                plt.plot(current_pose_T[0][0], current_pose_T[2][0], 'bo')
+                #plt.plot(estimated_x, estimated_z, 'bo')
+                plt.pause(0.001)
+                plt.show(block=False)
 
                 loss_sum += loss.item()
 
             test_loss.append(loss_sum / len(self.test_loader))
-
-            # Save batch error graph
-            if self.plot_batch == True:
-                plt.savefig('./Test Results ' + str(datetime.datetime.now()) + '.png')
 
             print('[Epoch {} Complete] Loader Reset'.format(epoch))
             self.test_loader.dataset.reset_loader()
@@ -161,4 +161,4 @@ class tester():
 
         torch.save(self.NN_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
 
-        return self.NN_model, test_loss
+        return test_loss

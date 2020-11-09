@@ -17,8 +17,8 @@ class trainer():
     def __init__(self, use_cuda=True, 
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
-                       train_epoch=1, train_sequence=['01'], train_batch=1,
-                       valid_sequence=['01'],
+                       train_epoch=1, train_sequence=[], train_batch=1,
+                       valid_sequence=[],
                        plot_batch=False, plot_epoch=True):
 
         self.use_cuda = use_cuda
