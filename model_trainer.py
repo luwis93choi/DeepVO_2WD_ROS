@@ -1,6 +1,8 @@
 from deepvoNet import DeepVONet
 from dataloader import voDataLoader
 
+from notifier import notifier_Outlook
+
 import torch
 import torch.optim as optim
 from torchvision import transforms
@@ -9,6 +11,7 @@ from torch.autograd import Variable
 from torchsummaryX import summary
 
 import datetime
+import time
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -19,7 +22,8 @@ class trainer():
                        img_dataset_path='', pose_dataset_path='',
                        train_epoch=1, train_sequence=[], train_batch=1,
                        valid_sequence=[],
-                       plot_batch=False, plot_epoch=True):
+                       plot_batch=False, plot_epoch=True,
+                       sender_email='', sender_email_pw='', receiver_email=''):
 
         self.use_cuda = use_cuda
 
@@ -36,6 +40,10 @@ class trainer():
 
         self.plot_batch = plot_batch
         self.plot_epoch = plot_epoch
+
+        self.sender_email = sender_email
+        self.sender_pw = sender_email_pw
+        self.receiver_email = receiver_email
 
         if use_cuda == True:        
             # Load main processing unit for neural network
@@ -62,6 +70,9 @@ class trainer():
         self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=0.0001)
 
         summary(self.deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
+
+        # Prepare Email Notifier
+        self.notifier = notifier_Outlook(sender_email=self.sender_email, sender_email_pw=self.sender_pw)
 
         # Prepare batch error graph
         if self.plot_batch == True:
@@ -101,6 +112,8 @@ class trainer():
             print('[EPOCH] : {}'.format(epoch))
 
             loss_sum = 0.0
+
+            before_epoch = time.time()
 
             for batch_idx, (prev_current_img, prev_current_odom) in enumerate(self.train_loader):
 
@@ -142,7 +155,14 @@ class trainer():
 
                 loss_sum += loss.item()
 
+            after_epoch = time.time()
+
             training_loss.append(loss_sum / len(self.train_loader))
+
+            # Send the result of each epoch
+            self.notifier.send(receiver_email=self.receiver_email, 
+                               title='[Epoch {} / {} Complete]'.format(epoch+1, self.train_epoch),
+                               contents=str(loss_sum / len(self.train_loader)) + '\n' + 'Time taken : {} sec'.format(after_epoch-before_epoch))
 
             # Save batch error graph
             if self.plot_batch == True:

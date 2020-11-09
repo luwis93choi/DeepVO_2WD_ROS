@@ -15,6 +15,8 @@ class notifier_Outlook:
         self.sender_email = sender_email
         self.sender_email_pw = sender_email_pw
 
+        print('Notifier [Sender : {}]'.format(self.sender_email))
+
     def send(self, receiver_email='', title= '', contents=''):
 
         if (self.sender_email != '') and (self.sender_email_pw != ''):
@@ -24,10 +26,12 @@ class notifier_Outlook:
             smtp.starttls()
             smtp.login(self.sender_email, self.sender_email_pw)
 
-            msg = MIMEText(title)
-            msg['Subject'] = contents
+            msg = MIMEText(contents)
+            msg['Subject'] = title
             msg['To'] = receiver_email
 
             smtp.sendmail(self.sender_email, receiver_email, msg.as_string())
+
+            print('Sending results to {}'.format(receiver_email))
 
             smtp.quit()

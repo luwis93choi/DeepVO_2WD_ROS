@@ -1,6 +1,8 @@
 from deepvoNet import DeepVONet
 from dataloader import voDataLoader
 
+from notifier import notifier_Outlook
+
 import torch
 import torch.optim as optim
 from torchvision import transforms
@@ -9,6 +11,7 @@ from torch.autograd import Variable
 from torchsummaryX import summary
 
 import datetime
+import time
 import numpy as np
 import math
 from matplotlib import pyplot as plt
@@ -20,7 +23,8 @@ class tester():
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
                        test_epoch=1, test_sequence=[], test_batch=1,
-                       plot_batch=False, plot_epoch=True):
+                       plot_batch=False, plot_epoch=True,
+                       sender_email='', sender_email_pw='', receiver_email=''):
 
         self.NN_model = NN_model
         self.use_cuda = use_cuda
@@ -34,6 +38,10 @@ class tester():
 
         self.plot_batch = plot_batch
         self.plot_epoch = plot_epoch
+
+        self.sender_email = sender_email
+        self.sender_pw = sender_email_pw
+        self.receiver_email = receiver_email
 
         if use_cuda == True:        
             # Load main processing unit for neural network
@@ -58,6 +66,9 @@ class tester():
         
         summary(self.NN_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
 
+        # Prepare Email Notifier
+        self.notifier = notifier_Outlook(sender_email=self.sender_email, sender_email_pw=self.sender_pw)
+
     def run_test(self):
 
         estimated_x = 0.0
@@ -81,6 +92,8 @@ class tester():
             print('[EPOCH] : {}'.format(epoch))
 
             loss_sum = 0.0
+
+            before_epoch = time.time()
 
             for batch_idx, (prev_current_img, prev_current_odom) in enumerate(self.test_loader):
 
@@ -141,7 +154,14 @@ class tester():
 
                 loss_sum += loss.item()
 
+            after_epoch = time.time()
+
             test_loss.append(loss_sum / len(self.test_loader))
+
+            # Send the result of each epoch
+            self.notifier.send(receiver_email=self.receiver_email, 
+                               title='[Epoch {} / {} Complete]'.format(epoch+1, self.test_epoch),
+                               contents=str(loss_sum / len(self.test_loader)) + '\n' + 'Time taken : {} sec'.format(after_epoch-before_epoch))
 
             print('[Epoch {} Complete] Loader Reset'.format(epoch))
             self.test_loader.dataset.reset_loader()
