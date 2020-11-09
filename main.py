@@ -57,8 +57,6 @@ summary(deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(PROCESSOR)))
 train_plot_color = plt.cm.get_cmap('rainbow', len(train_sequence))
 train_plot_x = 0
 
-draw_broken_yaxis = False
-
 ### Plotting graph setup with broken y-axis ######################################
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(20, 8))
 ax1.set_ylim(2, 30)
