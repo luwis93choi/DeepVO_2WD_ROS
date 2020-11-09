@@ -18,6 +18,7 @@ class trainer():
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
                        train_epoch=1, train_sequence=['01'], train_batch=1,
+                       valid_sequence=['01'],
                        plot_batch=False, plot_epoch=True):
 
         self.use_cuda = use_cuda
@@ -29,6 +30,10 @@ class trainer():
         self.train_sequence = train_sequence
         self.train_batch = train_batch
         
+        self.valid_epoch = train_epoch
+        self.valid_sequence = valid_sequence
+        self.valid_batch = train_batch
+
         self.plot_batch = plot_batch
         self.plot_epoch = plot_epoch
 
@@ -58,7 +63,7 @@ class trainer():
 
         summary(self.deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
 
-        # Plotting batch error graph
+        # Prepare batch error graph
         if self.plot_batch == True:
             
             self.train_plot_color = plt.cm.get_cmap('rainbow', len(train_sequence))
@@ -126,8 +131,8 @@ class trainer():
                     
                 # Plotting batch error graph
                 if self.plot_batch == True:
-                    self.ax1.plot(train_plot_x, loss.item(), c=self.train_plot_color(self.train_loader.dataset.sequence_idx), marker='o')
-                    self.ax2.plot(train_plot_x, loss.item(), c=self.train_plot_color(self.train_loader.dataset.sequence_idx), marker='o')
+                    self.ax1.plot(self.train_plot_x, loss.item(), c=self.train_plot_color(self.train_loader.dataset.sequence_idx), marker='o')
+                    self.ax2.plot(self.train_plot_x, loss.item(), c=self.train_plot_color(self.train_loader.dataset.sequence_idx), marker='o')
 
                     self.ax1.set_title('DeepVO Training with KITTI [MSE Loss at each batch]\nTraining Sequence ' + str(train_sequence))
                     self.ax2.set_xlabel('Training Length')
