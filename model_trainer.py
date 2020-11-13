@@ -52,9 +52,13 @@ class trainer():
         self.sender_pw = sender_email_pw
         self.receiver_email = receiver_email
 
-        if use_cuda == True:        
+        if (use_cuda == True) and (cuda_num != ''):        
             # Load main processing unit for neural network
             self.PROCESSOR = torch.device('cuda:'+self.cuda_num if torch.cuda.is_available() else 'cpu')
+
+        else:
+            self.PROCESSOR = torch.device('cpu')
+
         print(str(self.PROCESSOR))
 
         if NN_model == None:
@@ -82,7 +86,8 @@ class trainer():
                                                                      batch_size=self.train_batch, shuffle=True, drop_last=True)
 
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=self.learning_rate)
+        #self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.Adagrad(self.deepvo_model.parameters(), lr=self.learning_rate)
 
         summary(self.deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
 
@@ -159,7 +164,8 @@ class trainer():
                 else:
                     self.deepvo_model.reset_hidden_states(size=1, zero=True)
 
-                loss = self.criterion(estimated_odom, prev_current_odom.float())
+                #loss = self.criterion(estimated_odom, prev_current_odom.float())
+                loss = self.deepvo_model.get_pose_loss(estimated_odom, prev_current_odom)
 
                 loss.backward()
                 self.optimizer.step()
