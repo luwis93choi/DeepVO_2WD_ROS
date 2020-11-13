@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 class trainer():
 
     def __init__(self, NN_model=None,
-                       use_cuda=True, 
+                       use_cuda=True, cuda_num='',
                        loader_preprocess_param=transforms.Compose([]), 
                        model_path='./',
                        img_dataset_path='', pose_dataset_path='',
@@ -29,6 +29,7 @@ class trainer():
                        sender_email='', sender_email_pw='', receiver_email=''):
 
         self.use_cuda = use_cuda
+        self.cuda_num = cuda_num
 
         self.img_dataset_path = img_dataset_path
         self.pose_dataset_path = pose_dataset_path
@@ -53,7 +54,7 @@ class trainer():
 
         if use_cuda == True:        
             # Load main processing unit for neural network
-            self.PROCESSOR = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+            self.PROCESSOR = torch.device('cuda:'+self.cuda_num if torch.cuda.is_available() else 'cpu')
 
         if NN_model == None:
 
@@ -64,10 +65,11 @@ class trainer():
 
             self.deepvo_model = NN_model
             self.deepvo_model.to(self.PROCESSOR)
+            self.model_path = './'
 
-        if str(self.PROCESSOR) == 'cuda:0':
+        if 'cuda' in str(self.PROCESSOR):
             self.deepvo_model.use_cuda = True
-            self.deepvo_model.reset_hidden_states(size=1, zero=True)
+            self.deepvo_model.reset_hidden_states(size=1, zero=True, cuda_num=self.cuda_num)
 
         self.deepvo_model.train()
         self.deepvo_model.training = True

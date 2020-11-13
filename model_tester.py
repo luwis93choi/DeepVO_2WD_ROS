@@ -20,7 +20,7 @@ class tester():
 
     def __init__(self, NN_model=None,
                        model_path='./',
-                       use_cuda=True, 
+                       use_cuda=True, cuda_num='',
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
                        test_epoch=1, test_sequence=[], test_batch=1,
@@ -29,6 +29,7 @@ class tester():
 
         self.NN_model = NN_model
         self.use_cuda = use_cuda
+        self.cuda_num = cuda_num
 
         self.img_dataset_path = img_dataset_path
         self.pose_dataset_path = pose_dataset_path
@@ -47,13 +48,13 @@ class tester():
 
         if use_cuda == True:        
             # Load main processing unit for neural network
-            self.PROCESSOR = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+            self.PROCESSOR = torch.device('cuda:'+self.cuda_num if torch.cuda.is_available() else 'cpu')
 
         self.NN_model.to(self.PROCESSOR)
 
-        if str(self.PROCESSOR) == 'cuda:0':
+        if 'cuda' in str(self.PROCESSOR):
             self.NN_model.use_cuda = True
-            self.NN_model.reset_hidden_states(size=1, zero=True)
+            self.NN_model.reset_hidden_states(size=1, zero=True, cuda_num=self.cuda_num)
 
         self.NN_model.eval()
         self.NN_model.evaluation = True

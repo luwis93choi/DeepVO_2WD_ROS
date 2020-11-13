@@ -63,7 +63,7 @@ class DeepVONet(nn.Module):
         # Initialize hidden states of RNN
         self.reset_hidden_states()
 
-    def reset_hidden_states(self, size=1, zero=True):
+    def reset_hidden_states(self, size=1, zero=True, cuda_num=''):
 
         if zero == True:
             
@@ -90,17 +90,17 @@ class DeepVONet(nn.Module):
             self.cx2 = Variable(self.cx2.data)
 
         # If CUDA is available, prepare and copy hidden states and cell states in CUDA memory
-        if self.use_cuda == True:
+        if (self.use_cuda == True) and (cuda_num != ''):
 
             # Hidden State 1 for LSTM 1 in CUDA memory (1x1000)
-            self.hx1 = self.hx1.cuda()
+            self.hx1 = self.hx1.cuda(device='cuda:'+cuda_num)
             # Cell State 1 for LSTM 1 in CUDA memory (1x1000)
-            self.cx1 = self.cx1.cuda()
+            self.cx1 = self.cx1.cuda(device='cuda:'+cuda_num)
 
             # Hidden State 2 for LSTM 2 in CUDA memory (1x1000)
-            self.hx2 = self.hx2.cuda()
+            self.hx2 = self.hx2.cuda(device='cuda:'+cuda_num)
             # Cell State 2 for LSTM 2 in CUDA memory (1x1000)
-            self.cx2 = self.cx2.cuda()
+            self.cx2 = self.cx2.cuda(device='cuda:'+cuda_num)
 
     # Foward pass of DeepVO NN
     def forward(self, x):
