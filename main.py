@@ -23,10 +23,12 @@ ap = argparse.ArgumentParser()
 
 # NN-related argument
 ap.add_argument('-m', '--mode', type=str, required=True, help='Setting the mode of neural network between training and test')
+ap.add_argument('-s', '--model_path', type=str, required=True, help='Path for saving or loading NN model')
 ap.add_argument('-i', '--img_dataset_path', type=str, required=True, help='Directory path to image dataset')
 ap.add_argument('-p', '--pose_dataset_path', type=str, required=True, help='Directory path to pose dataset')
 ap.add_argument('-e', '--epoch', type=int, required=True, help='Epoch for training and test')
 ap.add_argument('-b', '--batch_size', type=int, required=True, help='Batch size for the model')
+ap.add_argument('-l', '--learning_rate', type=float, required=True, help='Learning rate of the model')
 
 # Notifier-related argument
 ap.add_argument('-E', '--sender_email', type=str, required=False, help='Sender Email ID')
@@ -34,12 +36,14 @@ ap.add_argument('-P', '--sender_pw', type=str, required=False, help='Sender Emai
 ap.add_argument('-R', '--receiver_email', type=str, required=False, help='Receiver Email ID')
 args = vars(ap.parse_args())
 
+model_path = args['model_path']
 img_dataset_path = args['img_dataset_path']
 pose_dataset_path = args['pose_dataset_path']
 
 epoch = args['epoch']
 batch_size = args['batch_size']
-train_sequence = ['01']
+learning_rate = args['learning_rate']
+train_sequence = ['00']
 #train_sequence=['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10']
 test_sequence = ['00']
 
@@ -60,21 +64,42 @@ if args['mode'] == 'train':
 
     deepvo_trainer = trainer(use_cuda=True,
                             loader_preprocess_param=preprocess,
+                            model_path=model_path,
                             img_dataset_path=img_dataset_path,
                             pose_dataset_path=pose_dataset_path,
+                            learning_rate=learning_rate,
                             train_epoch=epoch, train_sequence=train_sequence, train_batch=batch_size,
                             plot_batch=False, plot_epoch=True,
                             sender_email=args['sender_email'], sender_email_pw=args['sender_pw'], receiver_email=args['receiver_email'])
 
     deepvo_trainer.train()
 
+elif args['mode'] == 'train_pretrained_model':
+
+    deepvo_model = torch.load(model_path)
+
+    deepvo_trainer = trainer(use_cuda=True,
+                            loader_preprocess_param=preprocess,
+                            model_path=model_path,
+                            img_dataset_path=img_dataset_path,
+                            pose_dataset_path=pose_dataset_path,
+                            learning_rate=learning_rate,
+                            train_epoch=epoch, train_sequence=train_sequence, train_batch=batch_size,
+                            plot_batch=False, plot_epoch=True,
+                            sender_email=args['sender_email'], sender_email_pw=args['sender_pw'], receiver_email=args['receiver_email'])
+
+    deepvo_trainer.train()
+
+
 elif args['mode'] == 'test':
 
-    deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/DeepVO_2020-11-09 20:51:39.195046.pth')
+    deepvo_model = torch.load(model_path)
 
     deepvo_tester = tester(NN_model=deepvo_model,
+                        model_path=model_path,
                         use_cuda=True, loader_preprocess_param=preprocess,
-                        img_dataset_path=img_dataset_path, pose_dataset_path=pose_dataset_path,
+                        img_dataset_path=img_dataset_path, 
+                        pose_dataset_path=pose_dataset_path,
                         test_epoch=epoch, test_sequence=test_sequence, test_batch=batch_size,
                         plot_batch=False, plot_epoch=True,
                         sender_email=args['sender_email'], sender_email_pw=args['sender_pw'], receiver_email=args['receiver_email'])

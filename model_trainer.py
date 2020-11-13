@@ -17,9 +17,12 @@ from matplotlib import pyplot as plt
 
 class trainer():
 
-    def __init__(self, use_cuda=True, 
+    def __init__(self, NN_model=None,
+                       use_cuda=True, 
                        loader_preprocess_param=transforms.Compose([]), 
+                       model_path='./',
                        img_dataset_path='', pose_dataset_path='',
+                       learning_rate=0.001,
                        train_epoch=1, train_sequence=[], train_batch=1,
                        valid_sequence=[],
                        plot_batch=False, plot_epoch=True,
@@ -29,6 +32,9 @@ class trainer():
 
         self.img_dataset_path = img_dataset_path
         self.pose_dataset_path = pose_dataset_path
+        self.model_path = model_path
+
+        self.learning_rate = learning_rate
 
         self.train_epoch = train_epoch
         self.train_sequence = train_sequence
@@ -49,9 +55,15 @@ class trainer():
             # Load main processing unit for neural network
             self.PROCESSOR = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-        self.deepvo_model = DeepVONet()
-        self.deepvo_model.to(self.PROCESSOR)
+        if NN_model == None:
 
+            self.deepvo_model = DeepVONet()
+            self.deepvo_model.to(self.PROCESSOR)
+
+        else:
+
+            self.deepvo_model = NN_model
+            self.deepvo_model.to(self.PROCESSOR)
 
         if str(self.PROCESSOR) == 'cuda:0':
             self.deepvo_model.use_cuda = True
@@ -67,7 +79,7 @@ class trainer():
                                                                      batch_size=self.train_batch, shuffle=True, drop_last=True)
 
         self.criterion = torch.nn.MSELoss()
-        self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=0.0001)
+        self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=self.learning_rate)
 
         summary(self.deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(self.PROCESSOR)))
 
@@ -166,7 +178,7 @@ class trainer():
 
             # Save batch error graph
             if self.plot_batch == True:
-                plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
+                plt.savefig(self.model_path + 'Training Results ' + str(datetime.datetime.now()) + '.png')
 
             print('[Epoch {} Complete] Loader Reset'.format(epoch))
             self.train_loader.dataset.reset_loader()
@@ -182,9 +194,9 @@ class trainer():
             plt.title('DeepVO Training with KITTI [Average MSE Loss]\nTraining Sequence ' + str(self.train_sequence))
             plt.xlabel('Training Length')
             plt.ylabel('MSELoss')
-            plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
+            plt.savefig(self.model_path + 'Training Results ' + str(datetime.datetime.now()) + '.png')
 
-        torch.save(self.deepvo_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
+        torch.save(self.deepvo_model, self.model_path + 'DeepVO_' + str(datetime.datetime.now()) + '.pth')
 
         return self.deepvo_model, training_loss
 

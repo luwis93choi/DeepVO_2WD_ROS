@@ -19,6 +19,7 @@ from matplotlib import pyplot as plt
 class tester():
 
     def __init__(self, NN_model=None,
+                       model_path='./',
                        use_cuda=True, 
                        loader_preprocess_param=transforms.Compose([]), 
                        img_dataset_path='', pose_dataset_path='',
@@ -31,6 +32,7 @@ class tester():
 
         self.img_dataset_path = img_dataset_path
         self.pose_dataset_path = pose_dataset_path
+        self.model_path = model_path
 
         self.test_epoch = test_epoch
         self.test_sequence = test_sequence
@@ -147,8 +149,8 @@ class tester():
                 print(translation_Mat)
                 print(current_pose_T)
 
-                plt.plot(current_pose_T[0][0], current_pose_T[2][0], 'bo')
-                #plt.plot(estimated_x, estimated_z, 'bo')
+                #plt.plot(current_pose_T[0][0], current_pose_T[2][0], 'bo')
+                plt.plot(estimated_x, estimated_z, 'bo')
                 plt.pause(0.001)
                 plt.show(block=False)
 
@@ -177,8 +179,6 @@ class tester():
             plt.title('DeepVO Test with KITTI [Average MSE Loss]\nTest Sequence ' + str(self.test_sequence))
             plt.xlabel('Test Length')
             plt.ylabel('MSELoss')
-            plt.savefig('./Test Results ' + str(datetime.datetime.now()) + '.png')
-
-        torch.save(self.NN_model, './DeepVO_' + str(datetime.datetime.now()) + '.pth')
+            plt.savefig(self.model_path + 'Test Results ' + str(datetime.datetime.now()) + '.png')
 
         return test_loss
