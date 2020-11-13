@@ -46,10 +46,15 @@ class tester():
         self.sender_pw = sender_email_pw
         self.receiver_email = receiver_email
 
-        if use_cuda == True:        
+        if (use_cuda == True) and (cuda_num != ''):        
             # Load main processing unit for neural network
             self.PROCESSOR = torch.device('cuda:'+self.cuda_num if torch.cuda.is_available() else 'cpu')
 
+        else:
+            self.PROCESSOR = torch.device('cpu')
+
+        print(str(self.PROCESSOR))
+        
         self.NN_model.to(self.PROCESSOR)
 
         if 'cuda' in str(self.PROCESSOR):
@@ -104,19 +109,27 @@ class tester():
                     prev_current_img = Variable(prev_current_img.to(self.PROCESSOR))
                     prev_current_odom = Variable(prev_current_odom.to(self.PROCESSOR))
 
-                    estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
+                    estimated_odom = Variable(torch.zeros(prev_current_odom.shape).to(self.PROCESSOR))
 
                 if self.test_loader.dataset.sequence_change == True:
 
                     # Sequence has changed LSTM reset
                     print('[Sequence Change] LSTM Reset')
 
-                    self.NN_model.reset_hidden_states(size=1, zero=True)
+                    if 'cuda' in str(self.PROCESSOR):
+                        self.NN_model.reset_hidden_states(size=1, zero=False)
+                    else:
+                        self.NN_model.reset_hidden_states(size=1, zero=True)
 
                 estimated_odom = self.NN_model(prev_current_img)
-                self.NN_model.reset_hidden_states(size=1, zero=False)
+                
+                if 'cuda' in str(self.PROCESSOR):
+                    self.NN_model.reset_hidden_states(size=1, zero=False)
+                else:
+                    self.NN_model.reset_hidden_states(size=1, zero=True)
 
-                loss = self.criterion(estimated_odom, prev_current_odom.float())
+                #loss = self.criterion(estimated_odom, prev_current_odom.float())
+                loss = self.NN_model.get_pose_loss(estimated_odom, prev_current_odom)
 
                 print('[EPOCH {}] Batch : {} / Loss : {}'.format(epoch, batch_idx, loss))
 
@@ -170,7 +183,10 @@ class tester():
             self.test_loader.dataset.reset_loader()
 
             print('[Epoch {} Complete] LSTM Reset'.format(epoch))
-            self.NN_model.reset_hidden_states(size=1, zero=True)
+            if 'cuda' in str(self.PROCESSOR):
+                self.NN_model.reset_hidden_states(size=1, zero=True, cuda_num=self.cuda_num)
+            else:
+                self.NN_model.reset_hidden_states(size=1, zero=True)
 
         # Plotting average loss on each epoch
         if self.plot_epoch == True:

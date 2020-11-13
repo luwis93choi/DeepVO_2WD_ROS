@@ -158,7 +158,7 @@ class trainer():
                 self.optimizer.zero_grad()
                 
                 estimated_odom = self.deepvo_model(prev_current_img)
-                
+
                 if 'cuda' in str(self.PROCESSOR):
                     self.deepvo_model.reset_hidden_states(size=1, zero=False)
                 else:
@@ -207,7 +207,7 @@ class trainer():
             else:
                 self.deepvo_model.reset_hidden_states(size=1, zero=True)
 
-            torch.save(self.deepvo_model, './DeepVO_' + start_time + '.pth')
+            torch.save(self.deepvo_model, './pre_trained_DeepVO_' + start_time + '.pth')
 
         # Plotting average loss on each epoch
         if self.plot_epoch == True:

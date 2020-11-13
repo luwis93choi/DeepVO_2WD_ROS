@@ -102,7 +102,10 @@ elif args['mode'] == 'train_pretrained_model':
 
 elif args['mode'] == 'test':
 
-    deepvo_model = torch.load(model_path)
+    if cuda_num != '':
+        deepvo_model = torch.load(model_path, map_location='cuda:'+cuda_num)
+    else:
+        deepvo_model = torch.load(model_path)
 
     deepvo_tester = tester(NN_model=deepvo_model,
                         model_path=model_path,

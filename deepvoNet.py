@@ -160,7 +160,7 @@ class DeepVONet(nn.Module):
 
     def get_pose_loss(self, estimated_odom, groundtruth_odom):
 
-        pos_loss = nn.functional.mse_loss(groundtruth_odom[:3], estimated_odom[:3])
-        ang_loss = nn.functional.mse_loss(groundtruth_odom[3:], estimated_odom[3:])
+        pos_loss = nn.functional.mse_loss(groundtruth_odom[0][:3], estimated_odom[0][:3])
+        ang_loss = nn.functional.mse_loss(groundtruth_odom[0][3:], estimated_odom[0][3:])
 
         return 100 * ang_loss + pos_loss

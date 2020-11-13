@@ -119,7 +119,7 @@ class voDataLoader(torch.utils.data.Dataset):
 
         # Prepare 6 DOF pose vector between t-1 and t (dX dY dZ dRoll dPitch dYaw)
         prev_current_odom = np.asarray([dx, dy, dz, droll, dpitch, dyaw])
-
+        
         return prev_current_stacked_img, prev_current_odom
 
     def __getitem__(self, index):
