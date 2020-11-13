@@ -55,6 +55,7 @@ class trainer():
         if use_cuda == True:        
             # Load main processing unit for neural network
             self.PROCESSOR = torch.device('cuda:'+self.cuda_num if torch.cuda.is_available() else 'cpu')
+        print(str(self.PROCESSOR))
 
         if NN_model == None:
 
@@ -119,6 +120,8 @@ class trainer():
 
     def train(self):
 
+        start_time = str(datetime.datetime.now())
+
         training_loss = []
 
         for epoch in range(self.train_epoch):
@@ -135,19 +138,26 @@ class trainer():
                     prev_current_img = Variable(prev_current_img.to(self.PROCESSOR))
                     prev_current_odom = Variable(prev_current_odom.to(self.PROCESSOR))
 
-                    estimated_odom = Variable(torch.zeros(prev_current_odom.shape))
+                    estimated_odom = Variable(torch.zeros(prev_current_odom.shape).to(self.PROCESSOR))
 
                 if self.train_loader.dataset.sequence_change == True:
 
                     # Sequence has changed LSTM reset
                     print('[Sequence Change] LSTM Reset')
 
-                    self.deepvo_model.reset_hidden_states(size=1, zero=True)
+                    if 'cuda' in str(self.PROCESSOR):
+                        self.deepvo_model.reset_hidden_states(size=1, zero=True, cuda_num=self.cuda_num)
+                    else:
+                        self.deepvo_model.reset_hidden_states(size=1, zero=True)
 
                 self.optimizer.zero_grad()
                 
                 estimated_odom = self.deepvo_model(prev_current_img)
-                self.deepvo_model.reset_hidden_states(size=1, zero=False)
+                
+                if 'cuda' in str(self.PROCESSOR):
+                    self.deepvo_model.reset_hidden_states(size=1, zero=False)
+                else:
+                    self.deepvo_model.reset_hidden_states(size=1, zero=True)
 
                 loss = self.criterion(estimated_odom, prev_current_odom.float())
 
@@ -180,13 +190,18 @@ class trainer():
 
             # Save batch error graph
             if self.plot_batch == True:
-                plt.savefig(self.model_path + 'Training Results ' + str(datetime.datetime.now()) + '.png')
+                plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
 
             print('[Epoch {} Complete] Loader Reset'.format(epoch))
             self.train_loader.dataset.reset_loader()
 
             print('[Epoch {} Complete] LSTM Reset'.format(epoch))
-            self.deepvo_model.reset_hidden_states(size=1, zero=True)
+            if 'cuda' in str(self.PROCESSOR):
+                self.deepvo_model.reset_hidden_states(size=1, zero=True, cuda_num=self.cuda_num)
+            else:
+                self.deepvo_model.reset_hidden_states(size=1, zero=True)
+
+            torch.save(self.deepvo_model, './DeepVO_' + start_time + '.pth')
 
         # Plotting average loss on each epoch
         if self.plot_epoch == True:
@@ -196,9 +211,8 @@ class trainer():
             plt.title('DeepVO Training with KITTI [Average MSE Loss]\nTraining Sequence ' + str(self.train_sequence))
             plt.xlabel('Training Length')
             plt.ylabel('MSELoss')
-            plt.savefig(self.model_path + 'Training Results ' + str(datetime.datetime.now()) + '.png')
+            plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
 
-        torch.save(self.deepvo_model, self.model_path + 'DeepVO_' + str(datetime.datetime.now()) + '.pth')
 
         return self.deepvo_model, training_loss
 
