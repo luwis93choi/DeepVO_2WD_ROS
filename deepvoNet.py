@@ -15,38 +15,27 @@ class DeepVONet(nn.Module):
 
         # CNN Layer 1
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3))
-        self.relu1 = nn.ReLU(inplace=True)  # inplace = True : ReLU will modify the input directly without allocating any additional memory for ouput
-                                            #                  This option is used to save memory usage, but it has to be used with care
-                                            #                  https://discuss.pytorch.org/t/whats-the-difference-between-nn-relu-and-nn-relu-inplace-true/948
-                                            #                  https://github.com/pytorch/vision/issues/807
 
         # CNN Layer 2
         self.conv2 = nn.Conv2d(64, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
-        self.relu2 = nn.ReLU(inplace=True)
 
         # CNN Layer 3
         self.conv3 = nn.Conv2d(128, 256, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
-        self.relu3 = nn.ReLU(inplace=True)
 
         # CNN Layer 3_1
         self.conv3_1 = nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.relu3_1 = nn.ReLU(inplace=True)
 
         # CNN Layer 4
         self.conv4 = nn.Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
-        self.relu4 = nn.ReLU(inplace=True)
 
         # CNN Layer 4_1
         self.conv4_1 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.relu4_1 = nn.ReLU(inplace=True)
 
         # CNN Layer 5
         self.conv5 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
-        self.relu5 = nn.ReLU(inplace=True)
 
         # CNN Layer 5_1
         self.conv5_1 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-        self.relu5_1 = nn.ReLU(inplace=True)
 
         # CNN Layer 6
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
@@ -107,31 +96,24 @@ class DeepVONet(nn.Module):
         
         # Forward pass through CNN Layer 1
         x = self.conv1(x)
-        x = self.relu1(x)
 
         # Forward pass through CNN Layer 2
         x = self.conv2(x)
-        x = self.relu2(x)
 
         # Forward pass through CNN Layer 3
         x = self.conv3(x)
-        x = self.relu3(x)
 
         # Forward pass through CNN Layer 3_1
         x = self.conv3_1(x)
-        x = self.relu3_1(x)
 
         # Forward pass through CNN Layer 4
         x = self.conv4(x)
-        x = self.relu4(x)
 
         # Forward pass through CNN Layer 4_1
         x = self.conv4_1(x)
-        x = self.relu4_1(x)
 
         # Forward pass through CNN Layer 5
         x = self.conv5(x)
-        x = self.relu5(x)
 
         # Foward pass through CNN Layer 6
         x = self.conv6(x)
