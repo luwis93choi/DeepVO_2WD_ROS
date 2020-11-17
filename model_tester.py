@@ -131,7 +131,13 @@ class tester():
                 #loss = self.criterion(estimated_odom, prev_current_odom.float())
                 loss = self.NN_model.get_pose_loss(estimated_odom, prev_current_odom)
 
-                print('[EPOCH {}] Batch : {} / Loss : {}'.format(epoch, batch_idx, loss))
+                # Tensors (ex : loss, input data) have to be loaded on GPU and comsume GPU memory for training
+                # In order to conserve GPU memory usage, tensors for non-training related functions (ex : printing loss) have to be converted back from tensor
+                # As a result, for non-training related functions (ex : printing loss), use itme() or float(tensor.item()) API in order to utilize values stored in tensor
+                # Reference : https://pytorch.org/docs/stable/notes/faq.html (My model reports “cuda runtime error(2): out of memory”)
+                #           : https://stackoverflow.com/questions/61509872/resuming-pytorch-model-training-raises-error-cuda-out-of-memory
+
+                print('[EPOCH {}] Batch : {} / Loss : {}'.format(epoch, batch_idx, float(loss.item()))) # Use itme() in order to conserve GPU usage for printing loss
 
                 predicted_odom = estimated_odom.data.cpu().numpy()
 
@@ -168,7 +174,8 @@ class tester():
                 plt.pause(0.001)
                 plt.show(block=False)
 
-                loss_sum += loss.item()
+                loss_sum += float(loss.item())  # Use itme() in order to conserve GPU usage for printing loss
+                                                # If not casted as float, this will accumulate tensor instead of single float value
 
             after_epoch = time.time()
 
