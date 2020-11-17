@@ -87,7 +87,7 @@ elif args['mode'] == 'train_pretrained_model':
     else:
         deepvo_model = torch.load(model_path)
 
-    deepvo_trainer = trainer(use_cuda=True, cuda_num=cuda_num,
+    deepvo_trainer = trainer(NN_model=deepvo_model, use_cuda=True, cuda_num=cuda_num,
                             loader_preprocess_param=preprocess,
                             model_path=model_path,
                             img_dataset_path=img_dataset_path,
