@@ -1,0 +1,6 @@
+Run commands for python2 server
+: python2 process_node_python2Server.py
+
+Run commands for python3 server
+: python3 pyrealsense_python3Client.py
+: Python2 Server URI? [Copy/Paste URI from python2 server]
