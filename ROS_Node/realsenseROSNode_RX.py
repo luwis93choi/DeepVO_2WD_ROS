@@ -25,18 +25,21 @@ def callback(realsense_img_msgs):
     global bridge
     global rx_img
 
+    global deepVO_Node
+
     rospy.loginfo('Realsense Image Received')
 
     rx_img_np_arr = np.fromstring(realsense_img_msgs.data, np.uint8)
     rx_img = cv.imdecode(rx_img_np_arr, cv.IMREAD_COLOR)
 
-    cv.namedWindow('Python2 Server Realsene Img', cv.WINDOW_AUTOSIZE)
-    cv.imshow('Python2 Server Realsene Img', rx_img)
-    cv.waitKey(1)
+    # cv.namedWindow('Python2 Server Realsene Img', cv.WINDOW_AUTOSIZE)
+    # cv.imshow('Python2 Server Realsene Img', rx_img)
+    # cv.waitKey(1)
 
-    #global deepVO_Node
+    retval, buffer = cv.imencode('.jpg', rx_img)
+    TX_data = base64.b64encode(buffer)
 
-    #deepVO_Node.response(realsense_img_msgs.data)
+    deepVO_Node.response(TX_data.decode('utf-8'))
 
 def realsenseROSNode_RX():
 
@@ -46,6 +49,8 @@ def realsenseROSNode_RX():
     global bridge
 
     bridge = CvBridge()
+
+    deepVO_Node = Pyro4.Proxy('PYRONAME:deepVO_Node')
 
     rospy.init_node('realsenseROSNode_RX', anonymous=True)
     
