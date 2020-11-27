@@ -21,6 +21,7 @@ pipeline.start(config)
 
 orb = cv.ORB_create()
 
+# Recognize target Pyro4 server
 realsenseROSNode = Pyro4.Proxy('PYRONAME:realsense_ROSNode')
 
 try:
@@ -31,14 +32,12 @@ try:
         print('Frame Ready')
         color_img = np.asanyarray(frame.get_data())
 
+        # Encode realsense real-time data into base64 data
         retval, buffer = cv.imencode('.jpg', color_img)
         TX_data = base64.b64encode(buffer)
 
+        # Send base64 encoded string of Image to target Pyro4 server
         realsenseROSNode.response(TX_data.decode('utf-8'))
-
-        cv.namedWindow('Realsense Test', cv.WINDOW_AUTOSIZE)
-        cv.imshow('Realsense Test', color_img)
-        cv.waitKey(1)
 
 finally:
 

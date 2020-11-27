@@ -2,6 +2,8 @@
 
 import rospy
 from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import String
 from cv_bridge import CvBridge
 
 import Pyro4
@@ -40,16 +42,16 @@ def create_pyro4Server():
 
     pyroDaemon.requestLoop()
 
-def talker():
+def realsenseROSNode_TX():
 
     global decoded_img
     global pyro4_status
 
     bridge = CvBridge()
 
-    pub = rospy.Publisher('realsense_img', Image, queue_size=10)
-    rospy.init_node('realsenseROSNode', anonymous=True)
-    rate = rospy.Rate(30)
+    img_pub = rospy.Publisher('compressed_realsense_img', CompressedImage, queue_size=10)
+    rospy.init_node('realsenseROSNode_TX', anonymous=True)
+    rate = rospy.Rate(15)
 
     # Run Pyro4 server as an independent Daemon thread
     # Run it as Daemon thread in order to make it shut down when the main thread dies
@@ -62,18 +64,24 @@ def talker():
         print('pyro4Server status : {}'.format(pyro4_status))
 
         if decoded_img is not None:
+            
             image_msgs = bridge.cv2_to_imgmsg(decoded_img, 'bgr8')
-            pub.publish(image_msgs)
 
-            rospy.loginfo('realsenseROSNode img publish : {}'.format(time.time()))
+            rx_decoded_img = CompressedImage()
+            rx_decoded_img.header.stamp = rospy.Time.now()
+            rx_decoded_img.format = 'jpeg'
+            rx_decoded_img.data = np.array(cv.imencode('.jpg', decoded_img)[1]).tostring()
 
+            img_pub.publish(rx_decoded_img)
+
+            rospy.loginfo('realsenseROSNode_TX img publish : {}'.format(time.time()))
 
         rate.sleep()
 
 if __name__ == '__main__':
     
     try:
-        talker()
+        realsenseROSNode_TX()
 
     except rospy.ROSInterruptException:
         pass

@@ -1,0 +1,8 @@
+1. Run Roscore : roscore
+
+2. Run Pyro4 naming server on Jetson Nano : python -m Pyro4.naming
+   Run Pyro4 naming server on Host PC : python -m Pyro4.naming
+
+3. Run realsenseROSNode (ROS Python2) : rosrun python_node_test realsenseROSNode.py
+
+4. Run realsense process (ROS Python3) : python3 realsense_process.py
