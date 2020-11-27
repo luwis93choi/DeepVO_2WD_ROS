@@ -65,7 +65,7 @@ def realsenseROSNode_TX():
 
         if decoded_img is not None:
             
-            image_msgs = bridge.cv2_to_imgmsg(decoded_img, 'bgr8')
+            image_msgs = bridge.cv2_to_imgmsg(decoded_img, 'rgb8')
 
             rx_decoded_img = CompressedImage()
             rx_decoded_img.header.stamp = rospy.Time.now()
