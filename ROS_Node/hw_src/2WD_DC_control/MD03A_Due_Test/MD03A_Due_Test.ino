@@ -1,7 +1,5 @@
 /*
  * Arduino IDE Linux Setup + Serial Port Permission Setting : https://www.arduino.cc/en/Guide/Linux
- *                                                          : https://community.arduboy.com/t/solved-cant-upload-sketches/1685
- *                                                          : https://askubuntu.com/questions/58119/changing-permissions-on-serial-port
  * 
  * rosserial_arduino setup : http://wiki.ros.org/rosserial_arduino/Tutorials/Arduino%20IDE%20Setup
  * 

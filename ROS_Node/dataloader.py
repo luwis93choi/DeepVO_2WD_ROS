@@ -28,8 +28,6 @@ class voDataLoader(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
 
-        print('get item')
-
         prev_current_stacked_img = np.asarray(np.concatenate([self.prev_image, self.current_image], axis=0))
 
         return prev_current_stacked_img

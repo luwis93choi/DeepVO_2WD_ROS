@@ -19,6 +19,8 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
+from skimage.metrics import structural_similarity as ssim
+
 import argparse
 import os
 
@@ -74,6 +76,23 @@ def create_pyro4Server():
 
     pyroDaemon.requestLoop()
 
+def SSIM_frame_skip(prev_img, current_img, similarity_threshold=0.8):
+
+    SSIM_metric = ssim(prev_img, current_img, multichannel=True)
+
+    print('SSIM result : {}'.format(SSIM_metric))
+
+    if SSIM_metric > similarity_threshold:
+
+        print('No change in image : [Stationary]')
+        return False
+
+    elif SSIM_metric <= similarity_threshold:
+
+        print('Change in image : [Moving]')
+        return True
+
+
 def deepVO_Node():
 
     global decoded_img
@@ -97,7 +116,7 @@ def deepVO_Node():
 
     # Load pre-trained DeepVO Model on CUDA if available
     if torch.cuda.is_available():
-        deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/DeepVO_2020-11-18 03_54_13.559726.pth', map_location='cuda:0')
+        deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/201128/DeepVO_2020-11-28 00_24_51.547342.pth', map_location='cuda:0')
         deepvo_model.to(PROCESSOR)
         deepvo_model.use_cuda = True
         deepvo_model.reset_hidden_states(size=1, zero=True, cuda_num='0')
@@ -107,7 +126,7 @@ def deepVO_Node():
         summary(deepvo_model, Variable(torch.zeros((1, 6, 384, 1280)).to(PROCESSOR)))
 
     else:
-        deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/DeepVO_2020-11-18 03_54_13.559726.pth', map_location='cpu')
+        deepvo_model = torch.load('/home/luwis/ICSL_Project/DeepVO_TrainedModel/201128/DeepVO_2020-11-28 00_24_51.547342.pth', map_location='cpu')
         deepvo_model.to(PROCESSOR)
         deepvo_model.use_cuda = False
         deepvo_model.reset_hidden_states(size=1, zero=True)
@@ -122,6 +141,9 @@ def deepVO_Node():
     pyro4ServerThread.start()
 
     print('pyro4Server status : {}'.format(pyro4_status))
+
+    prev_img_cv = None
+    current_img_cv = None
 
     while True:
 
@@ -140,6 +162,8 @@ def deepVO_Node():
                 
                 init_required = False
 
+                current_img_cv = decoded_img    # Save current image as opencv format for frame skip check
+
             # After initialization, push previous image to lower index and load current image on higher index
             # Stack previous imagen and current image in order to feed DeepVO network
             elif init_required is False:
@@ -147,34 +171,41 @@ def deepVO_Node():
                 input_img_array[0] = input_img_array[1]
                 input_img_array[1] = transformed_img
 
-                # Pass stacked image to dataloader by accessing dataset attribute
-                test_loader.dataset.load_image_data(input_img_array[0], input_img_array[1])
+                ### Frame Skip Check ###
+                prev_img_cv = current_img_cv
+                current_img_cv = decoded_img
 
-                for batch_idx, prev_current_img in enumerate(test_loader):
+                # If previous image and current image are the same, there is no need for odometry prediction
+                if SSIM_frame_skip(prev_img_cv, current_img_cv, similarity_threshold=0.95):
 
-                    input_stacked_img = Variable(prev_current_img.to(PROCESSOR))
-                    estimated_odom = (torch.from_numpy(np.asarray([0, 0, 0, 0, 0, 0])).unsqueeze(0)).to(PROCESSOR)  # dx dy dz droll dpitch dyaw
+                    # Pass stacked image to dataloader by accessing dataset attribute
+                    test_loader.dataset.load_image_data(input_img_array[0], input_img_array[1])
+
+                    for batch_idx, prev_current_img in enumerate(test_loader):
+
+                        input_stacked_img = Variable(prev_current_img.to(PROCESSOR))
+                        estimated_odom = (torch.from_numpy(np.asarray([0, 0, 0, 0, 0, 0])).unsqueeze(0)).to(PROCESSOR)  # dx dy dz droll dpitch dyaw
+                        
+                        estimated_odom = deepvo_model(input_stacked_img)    # Visual Odometry Prediction
                     
-                    estimated_odom = deepvo_model(input_stacked_img)    # Visual Odometry Prediction
-                
-                    # Prepare prediction results
-                    predicted_odom = estimated_odom.data.cpu().numpy()
+                        # Prepare prediction results
+                        predicted_odom = estimated_odom.data.cpu().numpy()
 
-                    predicted_dx = predicted_odom[0][0]
-                    predicted_dy = predicted_odom[0][1]
-                    predicted_dz = predicted_odom[0][2]
+                        predicted_dx = predicted_odom[0][0]
+                        predicted_dy = predicted_odom[0][1]
+                        predicted_dz = predicted_odom[0][2]
 
-                    predicted_roll = predicted_odom[0][3]
-                    predicted_pitch = predicted_odom[0][4]
-                    predicted_yaw = predicted_odom[0][5]
+                        predicted_roll = predicted_odom[0][3]
+                        predicted_pitch = predicted_odom[0][4]
+                        predicted_yaw = predicted_odom[0][5]
 
-                    # Accumulate odometry prediction results
-                    estimated_x = estimated_x + predicted_dx
-                    estimated_z = estimated_z + predicted_dz
+                        # Accumulate odometry prediction results
+                        estimated_x = estimated_x + predicted_dx
+                        estimated_z = estimated_z + predicted_dz
 
-                    deepvo_model.reset_hidden_states(size=1, zero=False)
+                        deepvo_model.reset_hidden_states(size=1, zero=False)
 
-                    print('[Prediction] X : {} | Z : {}'.format(estimated_x, estimated_z))
+                        print('[Prediction] X : {} | Z : {}'.format(estimated_x, estimated_z))
 
                 # Plot odometry trajectory
                 plt.plot(estimated_x, estimated_z, 'bo')

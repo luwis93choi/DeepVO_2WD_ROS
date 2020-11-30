@@ -68,7 +68,7 @@ class tester():
                                                                     pose_dataset_path=self.pose_dataset_path,
                                                                     transform=loader_preprocess_param,
                                                                     sequence=test_sequence),
-                                                                    batch_size=self.test_batch, shuffle=True, drop_last=True)
+                                                                    batch_size=self.test_batch, shuffle=False, drop_last=True)
 
         self.criterion = torch.nn.MSELoss()
         

@@ -83,7 +83,7 @@ class trainer():
                                                                      pose_dataset_path=self.pose_dataset_path,
                                                                      transform=loader_preprocess_param,
                                                                      sequence=train_sequence),
-                                                                     batch_size=self.train_batch, shuffle=True, drop_last=True)
+                                                                     batch_size=self.train_batch, shuffle=False, drop_last=True)
 
         self.criterion = torch.nn.MSELoss()
         #self.optimizer = optim.SGD(self.deepvo_model.parameters(), lr=self.learning_rate)

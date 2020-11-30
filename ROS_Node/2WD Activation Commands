@@ -1,0 +1,29 @@
+2WD Protoype Run Commands
+
+
+
+[Jetson Nano Realsense TX + DC Motor Control Node Activation]
+
+1. roscore
+
+2. python -m Pyro4.naming
+
+3. rosrun python_node_test realsenseROSNode_TX.py
+
+4. python3 realsense_process.py
+
+5. rosrun rosserial_python serial_node.py _port:=/dev/ttyACM0 _baud:=57600
+
+
+
+[Host PC Realsense RX + Visual Odometry + Joy Stick Remote Control Node Activation]
+
+1. python -m Pyro4.naming (conda activate vslam_env)
+
+2. python3 deepVO_Node.py (conda activate vslam_env)
+
+3. rosrun realsense_ros_rx realsenseROSNode_RX.py (conda activate ROS_melodic_py2)
+
+4. rosrun joy joy_node (conda activate ROS_melodic_py2)
+
+5. rosrun realsense_ros_rx serial_2wd_dc_control.py (conda activate ROS_melodic_py2)
