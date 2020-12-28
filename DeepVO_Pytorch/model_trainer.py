@@ -158,13 +158,16 @@ class trainer():
                 self.optimizer.zero_grad()
                 
                 estimated_odom = self.deepvo_model(prev_current_img)
-
+                
+                # LSTM Temporal Information Flow Update
                 if 'cuda' in str(self.PROCESSOR):
-                    self.deepvo_model.reset_hidden_states(size=1, zero=False)
+                    # Hidden state upate using CUDA
+                    self.deepvo_model.reset_hidden_states(size=1, zero=False, cuda_num=self.cuda_num)
                 else:
-                    self.deepvo_model.reset_hidden_states(size=1, zero=True)
+                    # Hidden state update not using CUDA
+                    self.deepvo_model.reset_hidden_states(size=1, zero=False)
 
-                #loss = self.criterion(estimated_odom, prev_current_odom.float())
+                # Weighted Loss Calculation
                 loss = self.deepvo_model.get_pose_loss(estimated_odom, prev_current_odom)
 
                 loss.backward()
@@ -216,15 +219,15 @@ class trainer():
 
             torch.save(self.deepvo_model, './DeepVO_' + start_time + '.pth')
 
-        # Plotting average loss on each epoch
-        if self.plot_epoch == True:
-            plt.clf()
-            plt.figure(figsize=(20, 8))
-            plt.plot(range(self.train_epoch), training_loss, 'bo-')
-            plt.title('DeepVO Training with KITTI [Average MSE Loss]\nTraining Sequence ' + str(self.train_sequence))
-            plt.xlabel('Training Length')
-            plt.ylabel('MSELoss')
-            plt.savefig('./Training Results ' + str(datetime.datetime.now()) + '.png')
+            # Plotting average loss on each epoch
+            if self.plot_epoch == True:
+                plt.clf()
+                plt.figure(figsize=(20, 8))
+                plt.plot(range(self.train_epoch), training_loss, 'bo-')
+                plt.title('DeepVO Training with KITTI [Average MSE Loss]\nTraining Sequence ' + str(self.train_sequence))
+                plt.xlabel('Training Length')
+                plt.ylabel('MSELoss')
+                plt.savefig('./Training Results ' + start_time + '.png')
 
 
         return self.deepvo_model, training_loss
