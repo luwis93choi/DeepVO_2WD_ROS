@@ -15,30 +15,56 @@ class DeepVONet(nn.Module):
 
         # CNN Layer 1
         self.conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3))
+        self.batchnorm1 = nn.BatchNorm2d(64)
+        self.relu1 = nn.LeakyReLU(0.1)
+        self.dropout1 = nn.Dropout(0.5)
 
         # CNN Layer 2
         self.conv2 = nn.Conv2d(64, 128, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+        self.batchnorm2 = nn.BatchNorm2d(128)
+        self.relu2 = nn.LeakyReLU(0.1)
+        self.dropout2 = nn.Dropout(0.5)
 
         # CNN Layer 3
         self.conv3 = nn.Conv2d(128, 256, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2))
+        self.batchnorm3 = nn.BatchNorm2d(256)
+        self.relu3 = nn.LeakyReLU(0.1)
+        self.dropout3 = nn.Dropout(0.5)
 
         # CNN Layer 3_1
         self.conv3_1 = nn.Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.batchnorm3_1 = nn.BatchNorm2d(256)
+        self.relu3_1 = nn.LeakyReLU(0.1)
+        self.dropout3_1 = nn.Dropout(0.5)
 
         # CNN Layer 4
         self.conv4 = nn.Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        self.batchnorm4 = nn.BatchNorm2d(512)
+        self.relu4 = nn.LeakyReLU(0.1)
+        self.dropout4 = nn.Dropout(0.5)
 
         # CNN Layer 4_1
         self.conv4_1 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.batchnorm4_1 = nn.BatchNorm2d(512)
+        self.relu4_1 = nn.LeakyReLU(0.1)
+        self.dropout4_1 = nn.Dropout(0.5)
 
         # CNN Layer 5
         self.conv5 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        self.batchnorm5 = nn.BatchNorm2d(512)
+        self.relu5 = nn.LeakyReLU(0.1)
+        self.dropout5 = nn.Dropout(0.5)
 
         # CNN Layer 5_1
         self.conv5_1 = nn.Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        self.batchnorm5_1 = nn.BatchNorm2d(512)
+        self.relu5_1 = nn.LeakyReLU(0.1)
+        self.dropout5_1 = nn.Dropout(0.5)
 
         # CNN Layer 6
         self.conv6 = nn.Conv2d(512, 1024, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        self.batchnorm6 = nn.BatchNorm2d(1024)
+        self.dropout6 = nn.Dropout(0.5)
 
         # LSTM 1
         self.lstm1 = nn.LSTMCell(20*6*1024, 1000)
@@ -96,27 +122,50 @@ class DeepVONet(nn.Module):
         
         # Forward pass through CNN Layer 1
         x = self.conv1(x)
+        x = self.batchnorm1(x)
+        x = self.relu1(x)
+        x = self.dropout1(x)
 
         # Forward pass through CNN Layer 2
         x = self.conv2(x)
+        x = self.batchnorm2(x)
+        x = self.relu2(x)
+        x = self.dropout2(x)
 
         # Forward pass through CNN Layer 3
         x = self.conv3(x)
+        x = self.batchnorm3(x)
+        x = self.relu3(x)
+        x = self.dropout3(x)
 
         # Forward pass through CNN Layer 3_1
         x = self.conv3_1(x)
+        x = self.batchnorm3_1(x)
+        x = self.relu3_1(x)
+        x = self.dropout3_1(x)
 
         # Forward pass through CNN Layer 4
         x = self.conv4(x)
+        x = self.batchnorm4(x)
+        x = self.relu4(x)
+        x = self.dropout4(x)
 
         # Forward pass through CNN Layer 4_1
         x = self.conv4_1(x)
+        x = self.batchnorm4_1(x)
+        x = self.relu4_1(x)
+        x = self.dropout4_1(x)
 
         # Forward pass through CNN Layer 5
         x = self.conv5(x)
+        x = self.batchnorm5(x)
+        x = self.relu5(x)
+        x = self.dropout5(x)
 
         # Foward pass through CNN Layer 6
         x = self.conv6(x)
+        x = self.batchnorm6(x)
+        x = self.dropout6(x)
 
         # Reshpae/Flatten the output of CNN in order to use it as the input of RNN
         x = x.view(x.size(0), 20 * 6 * 1024)
