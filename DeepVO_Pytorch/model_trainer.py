@@ -223,7 +223,7 @@ class trainer():
             if self.plot_epoch == True:
                 plt.clf()
                 plt.figure(figsize=(20, 8))
-                plt.plot(range(self.train_epoch), training_loss, 'bo-')
+                plt.plot(range(self.training_loss), training_loss, 'bo-')
                 plt.title('DeepVO Training with KITTI [Average MSE Loss]\nTraining Sequence ' + str(self.train_sequence))
                 plt.xlabel('Training Length')
                 plt.ylabel('MSELoss')
